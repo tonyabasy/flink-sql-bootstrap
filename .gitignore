@@ -1,0 +1,20 @@
+# Maven
+target/
+*.jar
+!src/main/resources/META-INF/*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.tmp
