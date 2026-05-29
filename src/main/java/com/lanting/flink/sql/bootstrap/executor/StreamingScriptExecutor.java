@@ -21,6 +21,7 @@ package com.lanting.flink.sql.bootstrap.executor;
 import com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec;
 import com.lanting.flink.sql.bootstrap.resource.OperatorSpec;
 import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
+import com.lanting.flink.sql.bootstrap.util.JSON;
 
 import org.apache.flink.api.common.operators.SlotSharingGroup;
 import org.apache.flink.api.dag.Transformation;
@@ -33,6 +34,7 @@ import org.apache.flink.table.api.SqlParserEOFException;
 import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.internal.TableEnvironmentImpl;
 import org.apache.flink.table.api.internal.TableResultInternal;
+import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.operation.OperationHandle;
 import org.apache.flink.table.gateway.api.utils.SqlGatewayException;
 import org.apache.flink.table.gateway.service.application.Printer;
@@ -50,8 +52,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -77,8 +77,9 @@ import lombok.Setter;
  *       {@link Operation}，并提前判断是否属于 DML（{@link ModifyOperation} / {@link StatementSetOperation}）。</li>
  *   <li><b>延迟 DML 执行</b>：非 DML（DDL、SET、CALL 等）仍用 {@link OperationExecutor#executeStatement}
  *       立即执行，保证 catalog 状态及时更新。DML 暂存到 {@link Result#modifyOperations}，留到
- *       {@link #transform(List)} 和 {@link #execute()} 阶段统一处理。</li>
- *   <li><b>自定义 DML 路径</b>：在 {@code transform()} 中调 {@code planner.translate()}，
+ *       {@link #compile(List)}、{@link #transform(InternalPlan)} 和 {@link #execute()} 阶段统一处理。</li>
+ *   <li><b>自定义 DML 路径</b>：{@code compile()} → {@code planner.compilePlan()} 编译、
+ *       {@code transform()} → {@code planner.translatePlan()} 翻译、
  *       再通过 {@link #injectResourceSpec(List, String)} 注入资源，最后在 {@code execute()} 中
  *       反射调用 {@code TableEnvironmentImpl} 私有方法提交 Pipeline。</li>
  * </ol>
@@ -99,14 +100,14 @@ public class StreamingScriptExecutor {
     @Getter
     final String script;
 
-    final ObjectMapper objectMapper = new ObjectMapper();
-
     @Getter
     @Setter
     String resourceProfile;
 
     @Getter
     List<Result> parsedStatements;
+    @Getter
+    private InternalPlan compiledPlan;
     @Getter
     List<Transformation<?>> transformations;
 
@@ -156,7 +157,7 @@ public class StreamingScriptExecutor {
      *
      * <p>遍历 SQL 脚本，逐条切分并 parse。非 DML 语句（DDL、SET、CALL）会在此阶段立即执行，
      * 因为后续语句的 parse 可能依赖当前语句对 catalog 的修改。
-     * DML 语句只解析不执行，留到 {@link #transform(List)} 和 {@link #execute()} 中做资源注入。
+     * DML 语句只解析不执行，留到 {@link #compile(List)}、{@link #transform(InternalPlan)} 和 {@link #execute()} 中做资源注入。
      */
     public List<Result> validate(String script) {
         ResultIterator iterator = new ResultIterator(script);
@@ -184,16 +185,7 @@ public class StreamingScriptExecutor {
         return parsedStatements;
     }
 
-    /**
-     * 将 DML 语句翻译为 Flink {@link Transformation} DAG。
-     *
-     * <p>从 {@code results} 中找到唯一的 DML Result，调用 {@code planner.translate()}
-     * 生成 Transformation 列表。如果脚本中没有 DML 或多于一条 DML，将抛出异常。
-     *
-     * @param results {@link #validate(String)} 的输出
-     * @return translate 后的 Transformation 列表（尚未注入资源）
-     */
-    public List<Transformation<?>> transform(List<Result> results) {
+    public InternalPlan compile(List<Result> results) {
         List<Result> modifyOperationResult = new ArrayList<>();
         for (Result stmt : results) {
             if (stmt.isModifyOperation()) {
@@ -210,21 +202,46 @@ public class StreamingScriptExecutor {
                     "Multiple DML statements found in the script. Only one INSERT or EXECUTE STATEMENT SET is allowed per execution.");
         }
         Result result = modifyOperationResult.get(0);
-        return ((TableEnvironmentImpl) result.executor.getTableEnvironment()).getPlanner().translate(result.modifyOperations);
+
+        return tableEnv.getPlanner().compilePlan(result.modifyOperations);
     }
 
     /**
-     * 补齐 validate 和 transform 步骤（幂等）。
+     * 将编译好的 {@link InternalPlan} 翻译为 {@link Transformation} DAG。
      *
-     * <p>如果 {@link #parsedStatements} 或 {@link #transformations} 尚未初始化，
-     * 则依次调用 {@link #validate(String)} 和 {@link #transform(List)}。
+     * @param plan {@link #compile(List)} 的输出
+     * @return translate 后的 Transformation 列表（尚未注入资源）
+     */
+    public List<Transformation<?>> transform(InternalPlan plan) {
+        return tableEnv.getPlanner().translatePlan(plan);
+    }
+
+    /**
+     * 编译 SQL Script
+     */
+    public InternalPlan compile(String script) {
+        if (parsedStatements == null) {
+            parsedStatements = validate(script);
+        }
+        if (compiledPlan == null) {
+            compiledPlan = compile(parsedStatements);
+        }
+        return compiledPlan;
+    }
+
+    /**
+     * 补齐 validate → compile → transform 步骤（幂等）。
      */
     private void prepare() {
         if (parsedStatements == null) {
             parsedStatements = validate(script);
         }
+        if (compiledPlan == null) {
+            compiledPlan = compile(parsedStatements);
+        }
+
         if (transformations == null) {
-            transformations = transform(parsedStatements);
+            transformations = transform(compiledPlan);
         }
     }
 
@@ -315,12 +332,14 @@ public class StreamingScriptExecutor {
     /**
      * 执行 SQL Script。
      *
-     * <p>如果尚未调用 {@link #validate(String)} 或 {@link #transform(List)}，会自动补齐。
+     * <p>如果尚未调用 {@link #validate(String)}、{@link #compile(List)} 或 {@link #transform(InternalPlan)}，
+     * 会由 {@link #prepare()} 自动补齐。
      * 非 DML 语句在 validate 阶段已由 {@link OperationExecutor} 执行完毕。
      *
      * <p>DML 执行路径：
      * <ol>
-     *   <li>{@link #transform(List)} → {@code planner.translate()} 生成 Transformation DAG</li>
+     *   <li>{@link #compile(List)} → {@code planner.compilePlan()} 编译为 InternalPlan</li>
+     *   <li>{@link #transform(InternalPlan)} → {@code planner.translatePlan()} 生成 Transformation DAG</li>
      *   <li>{@link #injectResourceSpec(List, String)} 根据 {@code resourceHint} 注入算子资源</li>
      *   <li>{@link #executeInternal(List, TableEnvironmentImpl)} → 反射提交 Pipeline</li>
      * </ol>
@@ -328,18 +347,18 @@ public class StreamingScriptExecutor {
     public TableResult execute() throws InvocationTargetException, IllegalAccessException {
         prepare();
 
-        List<Transformation<?>> rejectedTransformations = transformations;
+        List<Transformation<?>> injectedTransformations = transformations;
         if (resourceProfile != null) {
-            rejectedTransformations = injectResourceSpec(transformations, resourceProfile);
+            injectedTransformations = injectResourceSpec(transformations, resourceProfile);
         }
 
-        return executeInternal(rejectedTransformations, tableEnv);
+        return executeInternal(injectedTransformations, tableEnv);
     }
 
     /**
      * 干运行（只 translate，不提交），输出资源配置 JSON。
      *
-     * <p>与 {@link #execute()} 使用相同的 validate → transform → rejectResourceSpec 路径，
+     * <p>与 {@link #execute()} 使用相同的 validate → transform → injectResourceSpec 路径，
      * 但不实际提交作业。输出的 JSON 可直接作为 {@link #setResourceProfile(String)} 的输入模板。
      *
      * <p><b>必须在独立 JVM 进程中调用</b>，原因同 {@link #execute()}。
@@ -347,15 +366,15 @@ public class StreamingScriptExecutor {
     public ResourceEntity generateResultSpec() {
         prepare();
 
-        List<Transformation<?>> rejected = transformations;
+        List<Transformation<?>> injected = transformations;
         if (resourceProfile != null) {
-            rejected = injectResourceSpec(transformations, resourceProfile);
+            injected = injectResourceSpec(transformations, resourceProfile);
         }
 
         ResourceEntity resource = resourceProfile != null ? parseResourceSpec(resourceProfile) : null;
 
         List<OperatorSpec> operators = new ArrayList<>();
-        for (Transformation<?> t : allTransformations(rejected)) {
+        for (Transformation<?> t : allTransformations(injected)) {
             if (!(t instanceof PhysicalTransformation)) {
                 continue;
             }
@@ -470,7 +489,7 @@ public class StreamingScriptExecutor {
     /**
      * BFS 遍历 DAG，返回所有 Transformation 的去重有序列表（根节点优先）。
      */
-    private List<Transformation<?>> allTransformations(List<Transformation<?>> roots) {
+    public List<Transformation<?>> allTransformations(List<Transformation<?>> roots) {
         Set<Integer> visited = new HashSet<>();
         Deque<Transformation<?>> queue = new ArrayDeque<>(roots);
         List<Transformation<?>> result = new ArrayList<>();
@@ -490,7 +509,7 @@ public class StreamingScriptExecutor {
             return null;
         }
         try {
-            return objectMapper.readValue(spec, ResourceEntity.class);
+            return JSON.parseObject(spec, ResourceEntity.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse resource spec JSON", e);
         }
@@ -663,7 +682,7 @@ public class StreamingScriptExecutor {
          *
          * <p>DML（{@link ModifyOperation} / {@link StatementSetOperation}）只解析不执行，
          * 将 {@link ModifyOperation} 暂存到 {@link Result#modifyOperations} 中，留待
-         * 外层 {@link #transform(List)} 和 {@link #execute()} 做资源注入后统一提交。
+         * 外层 {@link #compile(List)}、{@link #transform(InternalPlan)} 和 {@link #execute()} 做资源注入后统一提交。
          * 非 DML 语句立即通过 {@link OperationExecutor#executeStatement} 执行。
          */
         @Override
@@ -809,6 +828,7 @@ public class StreamingScriptExecutor {
      * <p>包含切分后的 SQL 原文、解析后的 {@link Operation}、对应的 {@link OperationExecutor}，
      * 以及执行结果（DML 暂存 {@link #modifyOperations}，非 DML 暂存 {@link #fetcher}）。
      */
+    @Getter
     public static class Result {
 
         final String statement;

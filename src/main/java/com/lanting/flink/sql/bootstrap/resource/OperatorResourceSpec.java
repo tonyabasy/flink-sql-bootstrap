@@ -31,6 +31,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * CPU + 内存资源规格。
@@ -46,6 +47,7 @@ import lombok.Data;
  * @since 2026-05-26
  */
 @Data
+@NoArgsConstructor
 @JsonInclude(Include.NON_EMPTY)
 public class OperatorResourceSpec {
 
@@ -55,25 +57,25 @@ public class OperatorResourceSpec {
      * 小杯：0.25 CPU, 512 MB heap
      */
     public static final OperatorResourceSpec SMALL = new OperatorResourceSpec(
-            0.25, "512 MB", null, null, "small");
+            "small", 0.25, "512 MB", null, null);
 
     /**
      * 普通杯：0.5 CPU, 1 GB heap
      */
     public static final OperatorResourceSpec NORMAL = new OperatorResourceSpec(
-            0.5, "1024 MB", null, null, "normal");
+            "normal", 0.5, "1024 MB", null, null);
 
     /**
      * 大杯：1.0 CPU, 2 GB heap, 256 MB managed
      */
     public static final OperatorResourceSpec LARGE = new OperatorResourceSpec(
-            1.0, "2048 MB", null, "256 MB", "large");
+            "large", 1.0, "2048 MB", null, "256 MB");
 
     /**
      * 超大杯：2.0 CPU, 4 GB heap, 512 MB managed
      */
     public static final OperatorResourceSpec XLARGE = new OperatorResourceSpec(
-            2.0, "4096 MB", null, "512 MB", "xlarge");
+            "xlarge", 2.0, "4096 MB", null, "512 MB");
 
     private static final Map<String, OperatorResourceSpec> STANDARD = new LinkedHashMap<>();
 
@@ -87,31 +89,38 @@ public class OperatorResourceSpec {
     /**
      * 预置规格名称，如 "small"、"normal"、"large"、"xlarge"。设置后优先于显式值。
      */
-    private final String uniqName;
-    private final Double cpuCores;
-    private final String heapMemory;
-    private final String offHeapMemory;
-    private final String managedMemory;
-    private final Map<String, Double> externalResources;
+    private String uniqName;
+    private Double cpuCores;
+    private String heapMemory;
+    private String offHeapMemory;
+    private String managedMemory;
+    private Map<String, Double> externalResources;
 
-    OperatorResourceSpec(Double cpuCores, String heapMemory, String offHeapMemory,
-                         String managedMemory, String uniqName) {
+    OperatorResourceSpec(String uniqName, Double cpuCores, String heapMemory, String offHeapMemory,
+                         String managedMemory) {
+        this.uniqName = uniqName;
         this.cpuCores = cpuCores;
         this.heapMemory = heapMemory;
         this.offHeapMemory = offHeapMemory;
         this.managedMemory = managedMemory;
         this.externalResources = Collections.emptyMap();
-        this.uniqName = uniqName;
     }
 
     public OperatorResourceSpec(Double cpuCores, String heapMemory, String offHeapMemory,
                                 String managedMemory, Map<String, Double> externalResources) {
+        this.uniqName = generateUniqName(this);
         this.cpuCores = cpuCores;
         this.heapMemory = heapMemory;
         this.offHeapMemory = offHeapMemory;
         this.managedMemory = managedMemory;
         this.externalResources = externalResources;
-        this.uniqName = generateUniqName(this);
+    }
+
+    public String getUniqName() {
+        if (uniqName == null) {
+            uniqName = generateUniqName(this);
+        }
+        return uniqName;
     }
 
     /**
@@ -121,16 +130,8 @@ public class OperatorResourceSpec {
      * @return 解析后的 OperatorResource（新对象，不修改原对象）
      */
     public OperatorResourceSpec resolve() {
-        if (uniqName != null && !uniqName.isEmpty()) {
-            OperatorResourceSpec preset = STANDARD.get(uniqName.toLowerCase(Locale.ROOT));
-            if (preset != null) {
-                return preset;
-            }
-            throw new IllegalArgumentException(
-                    "Unknown resource profile: '" + uniqName
-                            + "'. Available profiles: " + STANDARD.keySet());
-        }
-        return this;
+        return uniqName != null && STANDARD.get(uniqName.toLowerCase(Locale.ROOT)) == null ?
+                STANDARD.get(uniqName.toLowerCase(Locale.ROOT)) : this;
     }
 
     /**

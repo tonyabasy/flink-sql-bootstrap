@@ -16,7 +16,7 @@
  *  limitations under the License.
  *
  */
-package com.lanting.flink.sql.bootstrap;
+package com.lanting.flink.sql.bootstrap.util;
 
 /**
  * {@link ClassLoader} 工具方法。

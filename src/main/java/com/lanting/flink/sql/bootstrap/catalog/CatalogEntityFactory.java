@@ -18,6 +18,8 @@
  */
 package com.lanting.flink.sql.bootstrap.catalog;
 
+import com.lanting.flink.sql.bootstrap.util.JSON;
+
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.catalog.*;
@@ -30,7 +32,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 将 {@link CatalogEntity} 转换为 Flink 可直接使用的
@@ -51,8 +52,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public final class CatalogEntityFactory {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     private CatalogEntityFactory() {
     }
 
@@ -61,7 +60,7 @@ public final class CatalogEntityFactory {
     // ─────────────────────────────────────────────────────────────────────────
 
     public static GenericInMemoryCatalog from(String catalogStr) throws JsonProcessingException {
-        CatalogEntity snapshot = MAPPER.readValue(catalogStr, CatalogEntity.class);
+        CatalogEntity snapshot = JSON.parseObject(catalogStr, CatalogEntity.class);
         return from(snapshot);
     }
 

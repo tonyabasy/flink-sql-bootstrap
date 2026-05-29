@@ -18,9 +18,14 @@
  */
 package com.lanting.flink.sql.bootstrap;
 
+import static com.lanting.flink.sql.bootstrap.util.PrintUtils.*;
+
 import com.lanting.flink.sql.bootstrap.catalog.CatalogEntityFactory;
 import com.lanting.flink.sql.bootstrap.executor.StreamingScriptExecutor;
 import com.lanting.flink.sql.bootstrap.flink.UriSafeSessionContext;
+import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
+import com.lanting.flink.sql.bootstrap.util.ClassUtils;
+import com.lanting.flink.sql.bootstrap.util.JSON;
 
 import org.apache.flink.configuration.ConfigUtils;
 import org.apache.flink.configuration.Configuration;
@@ -31,6 +36,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.config.ExecutionConfigOptions;
 import org.apache.flink.table.catalog.GenericInMemoryCatalog;
+import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.session.SessionEnvironment;
 import org.apache.flink.table.gateway.api.session.SessionHandle;
 import org.apache.flink.table.gateway.rest.util.SqlGatewayRestAPIVersion;
@@ -117,7 +123,7 @@ public class SqlEntryPoint {
                     .option("r")
                     .longOpt("resource")
                     .numberOfArgs(1)
-                    .desc("Path to the resource configuration JSON file for per-operator tuning (parallelism, CPU, memory, chaining strategy). Use --init-resource-config to generate a template.")
+                    .desc("Path to the resource configuration JSON file for per-operator tuning (parallelism, CPU, memory, chaining strategy). Use --init-resource to generate a template.")
                     .build();
 
     public static final Option OPTION_RESOURCE_CONF_FILE =
@@ -146,16 +152,30 @@ public class SqlEntryPoint {
 
     public static final Option OPTION_DEPENDENCIES =
             Option.builder()
-                    .option("deps")
-                    .longOpt("dependencies")
+                    .option("d")
+                    .longOpt("dependency")
                     .numberOfArgs(Option.UNLIMITED_VALUES)
                     .desc("Local path to a dependency JAR file (e.g. UDF jars). Can be specified multiple times. JARs are appended to pipeline.classpaths and distributed to TaskManagers via BlobServer. Equivalent to 'flink run -C'.")
+                    .build();
+
+    public static final Option OPTION_SCRIPT_VALIDATE =
+            Option.builder()
+                    .longOpt("compile")
+                    .numberOfArgs(0)
+                    .desc("Parse, validate and compile the SQL script without submitting any job. Recommend use 'local' target.")
+                    .build();
+
+    public static final Option OPTION_INIT_RESOURCE =
+            Option.builder()
+                    .longOpt("init-resource")
+                    .numberOfArgs(0)
+                    .desc("Init resource configuration with current SQL script. Recommend use 'local' target.")
                     .build();
 
     public static void main(String[] args) throws Exception {
         ArgsContent argsContent = parseOptions(args);
         if (argsContent.isHelp) {
-            printHelp();
+            printHelp(getCliOptions());
             return;
         }
 
@@ -167,8 +187,8 @@ public class SqlEntryPoint {
         StreamExecutionEnvironment env =
                 StreamExecutionEnvironment.getExecutionEnvironment(innerConfig);
 
-        Configuration configuration = (Configuration) env.getConfiguration();
         // 合并依赖并写入 Configuration，通过 Pipeline.classpath -> BlobServer -> TM Download & load classpath 链路加载到各个 TM 节点
+        Configuration configuration = (Configuration) env.getConfiguration();
         List<URI> mergedDependencies = mergeDependencies(ConfigUtils.decodeListFromConfig(configuration, PipelineOptions.CLASSPATHS, URI::create), argsContent.dependencies);
         ConfigUtils.encodeCollectionToConfig(configuration, PipelineOptions.CLASSPATHS, mergedDependencies, URI::toString);
 
@@ -196,8 +216,22 @@ public class SqlEntryPoint {
             StreamingScriptExecutor executor = new StreamingScriptExecutor(
                     sessionContext, argsContent.script, argsContent.resource,
                     new Printer(System.out));
-            TableResult execute = executor.execute();
-            execute.print();
+
+            if (argsContent.isValidate) {
+                // 仅校验，不执行
+                InternalPlan compiledPlan = executor.compile(argsContent.script);
+                print("\n" + compiledPlan.asJsonString() + "\n");
+                print("Validate the SQL script successfully.");
+            } else if (argsContent.isInitResource) {
+                // 仅生成 Resource 初始化配置，不执行
+                ResourceEntity res = executor.generateResultSpec();
+                print(JSON.toJSONString(res, true));
+            } else {
+                // 执行 SQL Script
+                TableResult execute = executor.execute();
+                // FIXME 这里的 Result 都有哪些内容？哪些是用户需要关心的？只 print 够吗？
+                execute.print();
+            }
         }
     }
 
@@ -225,6 +259,8 @@ public class SqlEntryPoint {
         options.addOption(OPTION_CATALOG_CONF);
         options.addOption(OPTION_CATALOG_CONF_FILE);
         options.addOption(OPTION_DEPENDENCIES);
+        options.addOption(OPTION_INIT_RESOURCE);
+        options.addOption(OPTION_SCRIPT_VALIDATE);
         return options;
     }
 
@@ -276,7 +312,13 @@ public class SqlEntryPoint {
 
             String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
 
-            return new ArgsContent(script, catalog, resource, dependencies);
+            boolean isValidate = line.hasOption(OPTION_SCRIPT_VALIDATE.getLongOpt());
+            boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());
+            if (isValidate && isInitResource) {
+                throw new IllegalArgumentException("Don't set \"--validate\" or \"--init-resource\" together.");
+            }
+
+            return new ArgsContent(script, catalog, resource, dependencies, isValidate, isInitResource);
 
         } catch (ParseException | URISyntaxException e) {
             throw new IllegalArgumentException("Failed to parse args. It should never happens.", e);
@@ -339,31 +381,12 @@ public class SqlEntryPoint {
         }
     }
 
-    private static void printHelp() {
-        HelpFormatter formatter = new HelpFormatter();
-        String cmdLineSyntax = "flink run [flink-options] <jar> [--script-file <file> | --script <sql>] "
-                + "[--resource-file <file> | --resource <json>] "
-                + "[--catalog-file <file> | --catalog <json>] "
-                + "[--deps <jar1>,<jar2>,...]";
-        String header = "Flink SQL 算子资源调优工具 — 在 SQL 提交前按算子注入 CPU/内存/并行度配置。\n\n"
-                + "用法示例:\n"
-                + "  flink run target/flink-sql-bootstrap.jar \\\n"
-                + "    --script-file /path/to/job.sql \\\n"
-                + "    --resource-file /path/to/resource-hint.json \\\n"
-                + "    --deps /path/to/udf.jar\n\n"
-                + "注意: yarn-application / k8s-application 模式下不能传本地绝对路径，\n"
-                + "      请使用 --script/--resource/--catalog 内联传内容，或将文件 ship 到容器内。\n";
-        String footer = "";
-        formatter.printHelp(cmdLineSyntax, header, getCliOptions(), footer, true);
-    }
-
     /**
      * 命令行解析结果，封装 SQL 脚本、资源配置、Catalog 快照及运行模式标志。
      *
      * <p>所有资源内容均为解析后的原始字符串（JSON 文本或 SQL 文本），
      * 由调用方负责反序列化和校验。
      */
-    // TODO: 通过命令行参数支持 --test, --validate, --init-resource-config 模式
     static class ArgsContent {
         /**
          * SQL 脚本内容（必选）。
@@ -383,18 +406,8 @@ public class SqlEntryPoint {
         final List<URI> dependencies;
 
         boolean isHelp;
-        /**
-         * TODO: 尚未实现 — 仅解析校验，不提交作业。
-         */
-        boolean isTest;
-        /**
-         * TODO: 尚未实现 — 干运行验证 SQL 语义。
-         */
         boolean isValidate;
-        /**
-         * TODO: 尚未实现 — 生成初始资源配置模板 JSON。
-         */
-        boolean isInitResourceConfig;
+        boolean isInitResource;
 
         ArgsContent() {
             this.script = null;
@@ -403,34 +416,18 @@ public class SqlEntryPoint {
             this.dependencies = null;
         }
 
-        ArgsContent(String script, String catalog, String resource, String[] dependencies) {
+        ArgsContent(String script, String catalog, String resource, String[] dependencies, boolean isValidate, boolean isInitResource) {
             this.script = script;
             this.catalog = catalog;
             this.resource = resource;
             this.dependencies = toURIs(dependencies);
+            this.isValidate = isValidate;
+            this.isInitResource = isInitResource;
         }
 
         static ArgsContent help() {
             ArgsContent obj = new ArgsContent();
             obj.isHelp = true;
-            return obj;
-        }
-
-        static ArgsContent test() {
-            ArgsContent obj = new ArgsContent();
-            obj.isTest = true;
-            return obj;
-        }
-
-        static ArgsContent validate() {
-            ArgsContent obj = new ArgsContent();
-            obj.isValidate = true;
-            return obj;
-        }
-
-        static ArgsContent initResourceConfig() {
-            ArgsContent obj = new ArgsContent();
-            obj.isInitResourceConfig = true;
             return obj;
         }
     }
