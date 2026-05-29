@@ -42,7 +42,7 @@ flink run target/flink-sql-bootstrap.jar \
     --script-file /path/to/job.sql \
     --catalog-file /path/to/catalog.json \
     --resource-file /path/to/resource.json \
-    --deps /path/to/udf.jar
+    --dependency /path/to/udf.jar
 ```
 
 ## 如何贡献

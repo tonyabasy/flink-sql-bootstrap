@@ -51,18 +51,20 @@ public class PrintUtils {
      */
     public static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        String cmdLineSyntax = "flink run [flink-options] <jar> [--script-file <file> | --script <sql>] "
+        String cmdLineSyntax = "flink run [flink-options] <jar> "
+                + "[--script-file <file> | --script <sql>] "
                 + "[--resource-file <file> | --resource <json>] "
                 + "[--catalog-file <file> | --catalog <json>] "
-                + "[--dependency <jar1>,<jar2>,...]";
-        String header = "Flink SQL 算子资源调优工具 — 在 SQL 提交前按算子注入 CPU/内存/并行度配置。\n\n"
-                + "用法示例:\n"
+                + "[--dependency <jar> ...]";
+        String header = "Flink SQL Bootstrap — custom Catalog snapshots, Multi-Statement SQL Script deployment and fine-grained resource tuning.\n\n"
+                + "Examples:\n"
                 + "  flink run target/flink-sql-bootstrap.jar \\\n"
                 + "    --script-file /path/to/job.sql \\\n"
                 + "    --resource-file /path/to/resource-hint.json \\\n"
                 + "    --dependency /path/to/udf.jar\n\n"
-                + "注意: yarn-application / k8s-application 模式下不能传本地绝对路径，\n"
-                + "      请使用 --script/--resource/--catalog 内联传内容，或将文件 ship 到容器内。\n";
+                + "Note: In Application Mode, absolute local paths are unavailable.\n"
+                + "      Use --script / --resource / --catalog for inline values\n"
+                + "      or ship files into the container.\n\n";
         String footer = "";
         formatter.printHelp(cmdLineSyntax, header, options, footer, true);
     }
