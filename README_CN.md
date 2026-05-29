@@ -5,7 +5,7 @@
 
 # Flink SQL Bootstrap
 
-Flink SQL 的生产级增强扩展，提供离线 Catalog 快照、通用 SQL 执行引擎和算子级资源调优三大能力。
+Flink SQL 的生产级增强扩展，提供第三方 Catalog 快照、Multi SQL Script 校验、执行能力和 Flink SQL 细粒度资源调优三大能力。
 
 ## 为什么需要 Bootstrap
 

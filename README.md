@@ -5,7 +5,7 @@
 
 # Flink SQL Bootstrap
 
-A production-grade extension for Flink SQL that provides offline catalog snapshots, a decoupled SQL execution engine, and per-operator resource tuning.
+A production-grade enhancement and extension for Flink SQL, delivering three core capabilities: third-party catalog snapshot integration, multi-SQL script validation and execution, and fine-grained resource tuning for Flink SQL topologies.
 
 ## Why Bootstrap
 
