@@ -18,3 +18,8 @@ Thumbs.db
 # Misc
 *.log
 *.tmp
+
+CLAUDE.md
+.claude
+
+docs/agents
