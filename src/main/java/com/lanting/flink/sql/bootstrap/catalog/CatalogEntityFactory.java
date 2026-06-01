@@ -18,8 +18,8 @@
  */
 package com.lanting.flink.sql.bootstrap.catalog;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lanting.flink.sql.bootstrap.util.JSON;
+
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.catalog.*;
@@ -31,6 +31,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 /**
  * 将 {@link CatalogEntity} 转换为 Flink 可直接使用的
  * {@link GenericInMemoryCatalog}。
@@ -40,9 +42,6 @@ public final class CatalogEntityFactory {
     private CatalogEntityFactory() {
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 公开入口方法
-    // ─────────────────────────────────────────────────────────────────────────
 
     public static GenericInMemoryCatalog from(String catalogStr) throws JsonProcessingException {
         CatalogEntity snapshot = JSON.parseObject(catalogStr, CatalogEntity.class);
@@ -54,33 +53,30 @@ public final class CatalogEntityFactory {
      */
     public static GenericInMemoryCatalog from(CatalogEntity entity) {
         GenericInMemoryCatalog catalog = new GenericInMemoryCatalog(
-                entity.catalogName(),
-                entity.databaseName()
+                entity.getCatalogName(),
+                entity.getDatabaseName()
         );
 
         try {
-            ensureDatabase(catalog, entity.databaseName());
+            ensureDatabase(catalog, entity.getDatabaseName());
             registerTables(catalog, entity);
             registerViews(catalog, entity);
             registerUdfs(catalog, entity);
         } catch (Exception e) {
             throw new CatalogException(
-                    "从快照恢复 Catalog 失败 [" +
-                            entity.snapshotId() + "]", e);
+                    "Failed to restore catalog from snapshot [" +
+                            entity.getSnapshotId() + "]", e);
         }
 
         return catalog;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 表
-    // ─────────────────────────────────────────────────────────────────────────
 
     private static void registerTables(
             GenericInMemoryCatalog catalog,
             CatalogEntity snapshot) throws Exception {
 
-        for (TableEntity t : snapshot.tables()) {
+        for (TableEntity t : snapshot.getTables()) {
             ObjectPath path = new ObjectPath(t.database(), t.name());
             ensureDatabase(catalog, t.database());
             CatalogTable table = toCatalogTable(t);
@@ -102,7 +98,6 @@ public final class CatalogEntityFactory {
     static CatalogTable toCatalogTable(TableEntity t) {
         Schema.Builder schema = Schema.newBuilder();
 
-        // ── 列 ────────────────────────────────────────────────────────────
         for (ColumnEntity col : t.columns()) {
 
             if (col.isComputed()) {
@@ -145,7 +140,6 @@ public final class CatalogEntityFactory {
             }
         }
 
-        // ── Watermark ─────────────────────────────────────────────────────
         if (t.watermark() != null) {
             schema.watermark(
                     t.watermark().rowtimeColumn(),
@@ -153,7 +147,6 @@ public final class CatalogEntityFactory {
             );
         }
 
-        // ── 主键 ──────────────────────────────────────────────────────────
         if (t.primaryKey() != null) {
             PrimaryKeyEntity pk = t.primaryKey();
             String[] cols = pk.columnNames().toArray(String[]::new);
@@ -165,7 +158,6 @@ public final class CatalogEntityFactory {
             }
         }
 
-        // ── Options ───────────────────────────────────────────────────────
         // 防御性拷贝，保持 snapshot 对象不可变
         Map<String, String> options = new HashMap<>(t.options());
 
@@ -184,21 +176,18 @@ public final class CatalogEntityFactory {
         return builder.build();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 视图
-    // ─────────────────────────────────────────────────────────────────────────
 
     private static void registerViews(
             GenericInMemoryCatalog catalog,
             CatalogEntity snapshot) throws Exception {
 
-        for (ViewEntity v : snapshot.views()) {
+        for (ViewEntity v : snapshot.getViews()) {
             ensureDatabase(catalog, v.database());
             ObjectPath path = new ObjectPath(v.database(), v.name());
 
             // Flink 2.x CatalogView.of() — schema 传 null，由 query 运行时推导
             CatalogView view = CatalogView.of(
-                    null,                       // schema — null 表示由 expandedQuery 运行时推导
+                    null,                       // null — Flink 从 expandedQuery 推导 schema
                     v.comment(),
                     v.expandedQuery(),   // originalQuery
                     v.expandedQuery(),    // expandedQuery（snapshot 里已是展开形式）
@@ -209,16 +198,13 @@ public final class CatalogEntityFactory {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // UDF
-    // ─────────────────────────────────────────────────────────────────────────
 
     private static void registerUdfs(
             GenericInMemoryCatalog catalog,
             CatalogEntity snapshot) throws Exception {
 
-        for (UdfEntity udf : snapshot.udfs()) {
-            String dbName = udf.database() != null ? udf.database() : snapshot.databaseName();
+        for (UdfEntity udf : snapshot.getUdfs()) {
+            String dbName = udf.database() != null ? udf.database() : snapshot.getDatabaseName();
             ensureDatabase(catalog, dbName);
             ObjectPath path = new ObjectPath(dbName, udf.name());
             CatalogFunction fn = new CatalogFunctionImpl(
@@ -231,9 +217,6 @@ public final class CatalogEntityFactory {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 辅助方法
-    // ─────────────────────────────────────────────────────────────────────────
 
     private static void ensureDatabase(
             GenericInMemoryCatalog catalog,

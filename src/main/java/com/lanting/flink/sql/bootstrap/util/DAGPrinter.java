@@ -28,6 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 /**
  * DAG 打印机 V2：四阶段流水线，坐标只算一次不回头。
  */
+@Experimental
 class DAGPrinter {
 
     private static final int GAP   = 8;

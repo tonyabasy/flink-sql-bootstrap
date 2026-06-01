@@ -26,7 +26,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.Accessors;
 
 /**
  * Catalog 快照的 JSON 根对象，包含表、视图和 UDF 的完整元数据定义。
@@ -38,7 +37,6 @@ import lombok.experimental.Accessors;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
-@Accessors(fluent = true)
 @AllArgsConstructor
 @NoArgsConstructor
 public class CatalogEntity {
