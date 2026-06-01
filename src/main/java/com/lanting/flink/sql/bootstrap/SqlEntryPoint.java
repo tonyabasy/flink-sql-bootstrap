@@ -69,9 +69,9 @@ import org.apache.commons.io.IOUtils;
  *
  * <h3>功能</h3>
  * <ul>
- *   <li>通过 {@code --script} / {@code --scriptUri} 传入 SQL 脚本</li>
- *   <li>通过 {@code --resource} / {@code --resourceUri} 传入算子资源配置 JSON</li>
- *   <li>通过 {@code --catalog} / {@code --catalogUri} 传入 Catalog 快照 JSON（可选）</li>
+ *   <li>通过 {@code --script} / {@code --script-file} 传入 SQL 脚本</li>
+ *   <li>通过 {@code --resource} / {@code --resource-file} 传入算子资源配置 JSON</li>
+ *   <li>通过 {@code --catalog} / {@code --catalog-file} 传入 Catalog 快照 JSON（可选）</li>
  * </ul>
  *
  * <h3>执行流程</h3>
@@ -91,7 +91,7 @@ public class SqlEntryPoint {
 
     // 每个资源类型有两组选项：
     //   1. --xxx      直接传值（字符串路径或内容）
-    //   2. --xxxUri   传 URI（支持 file://、http://、hdfs:// 等）
+    //   2. --xxx-file  传 URI（支持 file://、http://、hdfs:// 等）
     // 两组互斥，不能同时指定。
 
     public static final Option OPTION_HELP =
@@ -158,7 +158,7 @@ public class SqlEntryPoint {
                     .desc("Local path to a dependency JAR file (e.g. UDF jars). Can be specified multiple times. JARs are appended to pipeline.classpaths and distributed to TaskManagers via BlobServer. Equivalent to 'flink run -C'.")
                     .build();
 
-    public static final Option OPTION_SCRIPT_VALIDATE =
+    public static final Option OPTION_SCRIPT_COMPILE =
             Option.builder()
                     .longOpt("compile")
                     .numberOfArgs(0)
@@ -217,11 +217,11 @@ public class SqlEntryPoint {
                     sessionContext, argsContent.script, argsContent.resource,
                     new Printer(System.out));
 
-            if (argsContent.isValidate) {
+            if (argsContent.isCompile) {
                 // 仅校验，不执行
                 InternalPlan compiledPlan = executor.compile(argsContent.script);
                 print("\n" + compiledPlan.asJsonString() + "\n");
-                print("Validate the SQL script successfully.");
+                print("Compile the SQL script successfully!");
             } else if (argsContent.isInitResource) {
                 // 仅生成 Resource 初始化配置，不执行
                 ResourceEntity res = executor.generateResultSpec();
@@ -229,7 +229,6 @@ public class SqlEntryPoint {
             } else {
                 // 执行 SQL Script
                 TableResult execute = executor.execute();
-                // FIXME 这里的 Result 都有哪些内容？哪些是用户需要关心的？只 print 够吗？
                 execute.print();
             }
         }
@@ -260,15 +259,15 @@ public class SqlEntryPoint {
         options.addOption(OPTION_CATALOG_CONF_FILE);
         options.addOption(OPTION_DEPENDENCIES);
         options.addOption(OPTION_INIT_RESOURCE);
-        options.addOption(OPTION_SCRIPT_VALIDATE);
+        options.addOption(OPTION_SCRIPT_COMPILE);
         return options;
     }
 
     /**
      * 解析命令行参数，返回结构化的 {@link ArgsContent}。
      *
-     * <p>对每个资源类型（script / catalog / resource），{@code --xxx} 和 {@code --xxxUri}
-     * 两组互斥 — 前者直接传值，后者传 URI（支持 file://、http://、hdfs:// 等），
+     * <p>对每个资源类型（script / catalog / resource），{@code --xxx} 和 {@code --xxx-file}
+     * 两组互斥 — 前者直接传值，后者传文件路径或 URI（支持 file://、http://、hdfs:// 等），
      * 通过 {@link #getContent(String)} 统一读取。
      */
     static ArgsContent parseOptions(String[] args) {
@@ -285,11 +284,11 @@ public class SqlEntryPoint {
             if (script == null) {
                 script = Preconditions.checkNotNull(
                         line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()),
-                        "Please use \"--script\" or \"--scriptUri\" to specify script either.");
+                        "Please use \"--script\" or \"--script-file\" to specify script either.");
             } else {
                 Preconditions.checkArgument(
                         line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()) == null,
-                        "Don't set \"--script\" or \"--scriptUri\" together.");
+                        "Don't set \"--script\" or \"--script-file\" together.");
             }
 
             String catalog = getContent(line.getOptionValue(OPTION_CATALOG_CONF_FILE.getLongOpt()));
@@ -298,7 +297,7 @@ public class SqlEntryPoint {
             } else {
                 Preconditions.checkArgument(
                         line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt()) == null,
-                        "Don't set \"--catalog\" or \"--catalogUri\" together.");
+                        "Don't set \"--catalog\" or \"--catalog-file\" together.");
             }
 
             String resource = getContent(line.getOptionValue(OPTION_RESOURCE_CONF_FILE.getLongOpt()));
@@ -307,18 +306,18 @@ public class SqlEntryPoint {
             } else {
                 Preconditions.checkArgument(
                         line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt()) == null,
-                        "Don't set \"--resource\" or \"--resourceUri\" together.");
+                        "Don't set \"--resource\" or \"--resource-file\" together.");
             }
 
             String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
 
-            boolean isValidate = line.hasOption(OPTION_SCRIPT_VALIDATE.getLongOpt());
+            boolean isCompile = line.hasOption(OPTION_SCRIPT_COMPILE.getLongOpt());
             boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());
-            if (isValidate && isInitResource) {
-                throw new IllegalArgumentException("Don't set \"--validate\" or \"--init-resource\" together.");
+            if (isCompile && isInitResource) {
+                throw new IllegalArgumentException("Don't set \"--compile\" or \"--init-resource\" together.");
             }
 
-            return new ArgsContent(script, catalog, resource, dependencies, isValidate, isInitResource);
+            return new ArgsContent(script, catalog, resource, dependencies, isCompile, isInitResource);
 
         } catch (ParseException | URISyntaxException e) {
             throw new IllegalArgumentException("Failed to parse args. It should never happens.", e);
@@ -406,7 +405,7 @@ public class SqlEntryPoint {
         final List<URI> dependencies;
 
         boolean isHelp;
-        boolean isValidate;
+        boolean isCompile;
         boolean isInitResource;
 
         ArgsContent() {
@@ -416,12 +415,12 @@ public class SqlEntryPoint {
             this.dependencies = null;
         }
 
-        ArgsContent(String script, String catalog, String resource, String[] dependencies, boolean isValidate, boolean isInitResource) {
+        ArgsContent(String script, String catalog, String resource, String[] dependencies, boolean isCompile, boolean isInitResource) {
             this.script = script;
             this.catalog = catalog;
             this.resource = resource;
             this.dependencies = toURIs(dependencies);
-            this.isValidate = isValidate;
+            this.isCompile = isCompile;
             this.isInitResource = isInitResource;
         }
 

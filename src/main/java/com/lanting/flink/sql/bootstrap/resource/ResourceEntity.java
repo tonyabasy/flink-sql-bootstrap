@@ -77,7 +77,7 @@ public class ResourceEntity {
      * 根据 UID 查找对应的算子配置规则。
      *
      * @param uid Transformation UID
-     * @return 匹配的 OperatorHint，未找到返回 null
+     * @return 匹配的 OperatorSpec，未找到返回 null
      */
     public OperatorSpec findByUid(String uid) {
         if (uid == null || operators == null) {
@@ -92,11 +92,11 @@ public class ResourceEntity {
     /**
      * 根据算子名称查找对应的算子配置规则（名称匹配作为 UID 匹配的兜底策略）。
      *
-     * <p>用于 {@code --init-config} 模式生成初始配置后，用户可以通过算子名称
+     * <p>用于 {@code --init-resource} 模式生成初始配置后，用户可以通过算子名称
      * 匹配并覆盖自动生成的 UID。
      *
      * @param name Transformation 名称
-     * @return 匹配的 OperatorHint，未找到返回 null
+     * @return 匹配的 OperatorSpec，未找到返回 null
      */
     public OperatorSpec findByName(String name) {
         if (name == null || operators == null) {

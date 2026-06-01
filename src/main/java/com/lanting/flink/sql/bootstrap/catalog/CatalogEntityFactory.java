@@ -18,8 +18,8 @@
  */
 package com.lanting.flink.sql.bootstrap.catalog;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lanting.flink.sql.bootstrap.util.JSON;
-
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.catalog.*;
@@ -31,24 +31,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 /**
  * 将 {@link CatalogEntity} 转换为 Flink 可直接使用的
  * {@link GenericInMemoryCatalog}。
- *
- * <p>无网络调用、无 MySQL、无 LantingFS 访问。
- * 所有信息都内置于快照对象中。
- *
- * <h2>在 EntryPoint.main() 中使用</h2>
- * <pre>{@code
- * InputStream in = MyEntry.class.getResourceAsStream(
- *     "/META-INF/catalog-snapshot.json");
- * GenericInMemoryCatalog catalog =
- *     SnapshotCatalogBuilder.fromStream(in);
- * tEnv.registerCatalog("platform", catalog);
- * tEnv.useCatalog("platform");
- * }</pre>
  */
 public final class CatalogEntityFactory {
 

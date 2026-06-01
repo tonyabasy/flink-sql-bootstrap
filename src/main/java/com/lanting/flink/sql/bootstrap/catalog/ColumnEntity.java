@@ -37,7 +37,7 @@ import lombok.experimental.Accessors;
  *   <li>复杂类型：ARRAY&lt;T&gt;, MAP&lt;K,V&gt;, ROW&lt;f T, …&gt;</li>
  * </ul>
  * 所有类型都用纯字符串 {@code type} 表达，由
- * {@link CatalogEntityFactory} 通过 {@code DataTypes.of(AbstractDataType)} 解析。
+ * {@link CatalogEntityFactory} 通过 {@code DataTypes.of(String)} 解析。
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data

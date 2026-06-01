@@ -300,7 +300,7 @@ public class StreamingScriptExecutor {
                 // SSG 名称使用 resourceSignature()，而非算子 UID。
                 // 这样相同资源配置的算子自动归入同一组，operator chain 得以保持。
                 SlotSharingGroup.Builder ssgBuilder =
-                        SlotSharingGroup.newBuilder(r.getUniqName())
+                        SlotSharingGroup.newBuilder(r.getProfile())
                                 .setCpuCores(r.getCpuCores())
                                 .setTaskHeapMemory(MemorySize.parse(r.getHeapMemory()))
                                 .setTaskOffHeapMemory(

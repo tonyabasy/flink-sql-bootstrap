@@ -29,11 +29,12 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 /**
- * META-INF/catalog-snapshot.json 的根对象。
+ * Catalog 快照的 JSON 根对象，包含表、视图和 UDF 的完整元数据定义。
  *
- * <p>表示发布时捕获的完全展开、自包含的 DDL 状态。
- * 序列化到作业 JAR 后，此对象是 Flink Catalog 的唯一事实来源；
- * 运行时无需访问 MySQL 或 LantingFS。
+ * <p>自包含设计——所有 DDL 信息内置于快照中，运行时无需访问外部元数据中心即可恢复
+ * {@link org.apache.flink.table.catalog.GenericInMemoryCatalog}。
+ *
+ * @see com.lanting.flink.sql.bootstrap.catalog.CatalogEntityFactory
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data

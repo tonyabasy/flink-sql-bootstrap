@@ -32,8 +32,7 @@ import lombok.experimental.Accessors;
  * {@link CatalogEntity} 中的用户自定义函数条目。
  *
  * <p>{@code kind} 取值为：{@code SCALAR}、{@code TABLE}、{@code AGGREGATE} 之一。
- * {@code jarRef} 是 UDF JAR 在 {@code pipeline.jars} 中出现的文件名；
- * Cluster Adapter 负责在提交前上传 JAR。
+ * {@code jarRef} 是 UDF JAR 在 {@code pipeline.jars} 中出现的文件名。
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data

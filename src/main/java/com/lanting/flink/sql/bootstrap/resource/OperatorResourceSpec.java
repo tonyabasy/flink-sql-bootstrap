@@ -89,16 +89,16 @@ public class OperatorResourceSpec {
     /**
      * 预置规格名称，如 "small"、"normal"、"large"、"xlarge"。设置后优先于显式值。
      */
-    private String uniqName;
+    private String profile;
     private Double cpuCores;
     private String heapMemory;
     private String offHeapMemory;
     private String managedMemory;
     private Map<String, Double> externalResources;
 
-    OperatorResourceSpec(String uniqName, Double cpuCores, String heapMemory, String offHeapMemory,
+    OperatorResourceSpec(String profile, Double cpuCores, String heapMemory, String offHeapMemory,
                          String managedMemory) {
-        this.uniqName = uniqName;
+        this.profile = profile;
         this.cpuCores = cpuCores;
         this.heapMemory = heapMemory;
         this.offHeapMemory = offHeapMemory;
@@ -108,7 +108,7 @@ public class OperatorResourceSpec {
 
     public OperatorResourceSpec(Double cpuCores, String heapMemory, String offHeapMemory,
                                 String managedMemory, Map<String, Double> externalResources) {
-        this.uniqName = generateUniqName(this);
+        this.profile = generateName(this);
         this.cpuCores = cpuCores;
         this.heapMemory = heapMemory;
         this.offHeapMemory = offHeapMemory;
@@ -116,11 +116,11 @@ public class OperatorResourceSpec {
         this.externalResources = externalResources;
     }
 
-    public String getUniqName() {
-        if (uniqName == null) {
-            uniqName = generateUniqName(this);
+    public String getProfile() {
+        if (profile == null) {
+            profile = generateName(this);
         }
-        return uniqName;
+        return profile;
     }
 
     /**
@@ -130,8 +130,8 @@ public class OperatorResourceSpec {
      * @return 解析后的 OperatorResource（新对象，不修改原对象）
      */
     public OperatorResourceSpec resolve() {
-        return uniqName != null && STANDARD.get(uniqName.toLowerCase(Locale.ROOT)) == null ?
-                STANDARD.get(uniqName.toLowerCase(Locale.ROOT)) : this;
+        return profile != null && STANDARD.get(profile.toLowerCase(Locale.ROOT)) != null ?
+                STANDARD.get(profile.toLowerCase(Locale.ROOT)) : this;
     }
 
     /**
@@ -143,7 +143,7 @@ public class OperatorResourceSpec {
      *
      * @return 资源签名，如 {@code "cpu0.25-heap524288000b"} 或 {@code "preset:small"}
      */
-    public static String generateUniqName(OperatorResourceSpec optResource) {
+    public static String generateName(OperatorResourceSpec optResource) {
         StringBuilder sb = new StringBuilder();
         sb.append("cpu").append(optResource.cpuCores);
 
