@@ -1,57 +1,41 @@
 # Changelog
 
-## [0.1.0] - 2026-06-02
+All notable changes to this project will be documented in this file.
 
-### Features
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-- 初始化 Flink SQL Bootstrap 项目，支持 Multi-Statement SQL Script 执行
-- 重构 DAG 打印机和 SQL 编译链路，支持编译时验证
-- 兼容 Flink 1.20.x Application Mode，新增示例文件
-- 新增 `--validate` 选项，支持 SQL 语法校验而不提交到集群
-- SQL 解析错误附带行号信息，便于快速定位语法问题
-- 新增 `SqlError` 异常类，错误消息包含行列号
-- 新增 `--init-resource` 选项，生成算子级资源调优模板
-- Catalog 快照支持表、视图、UDF 预注册
-- 算子级资源注入（CPU/Heap/Managed/Parallelism/ChainStrategy）
+## [Unreleased]
 
-### Bug Fixes
+### Added
 
-- 修复注释与代码不一致的问题
-- 移除调试输出和 FIXME 注释
-- 添加路径遍历防护
-- 修复 Printer 在 NOT_READY 状态下的忙等问题（指数退避）
-
-### Refactor
-
-- 重组异常类，统一继承 `SqlScriptException`
-- 重组测试资源目录结构
-- 引入 `@Experimental` 注解标记实验性 API
-
-### Tests
-
-- 新增 StreamingScriptExecutor 核心测试（8 用例）
-- 新增 injectResourceSpec + generateResultSpec 测试（11 用例）
-- 总计 45 个单元测试覆盖核心逻辑
-
-### Documentation
-
-- 更新项目描述，强调三大核心能力
-- 新增能力边界文档（docs/CAPABILITIES.md）
-- 新增中英文版能力边界文档
-- 添加 CONTEXT.md 领域术语表
-- 优化 CLI help 并统一术语
-- 完善 README，补充 CLI 选项、编译模式、示例输出
-- 根据实际执行结果修正 README 中的示例输出
-- 新增 docs/agents/ 目录，提供 AI Agent 协作指南
+- **Multi-Statement SQL Script execution engine** — Supports mixing `CREATE TABLE`, `SET`, `INSERT`, `CALL`, and other statements in a single `.sql` file. Statements are automatically split, validated, and orchestrated in semantic order, with DML statements deferred to the compilation phase for unified submission.
+- **Catalog snapshot pre-registration** — Pre-register tables, views, and UDFs via a JSON file so the Catalog is fully ready at job startup, eliminating the need for DDL in the SQL script. Supports multi-protocol loading: `classpath:`, `file://`, `http(s)://`, and `hdfs://`.
+- **Fine-grained operator-level resource injection** — Inject parallelism, CPU, heap memory, managed memory, off-heap memory, external resources, and chain strategy at the Transformation DAG level, matched by operator UID or name. Operators with identical resource configs are automatically grouped into the same SlotSharingGroup.
+- **SQL syntax validation (`--validate`)** — Validate SQL syntax locally without submitting to a Flink cluster. Parse errors include exact line and column numbers for rapid iteration.
+- **SQL compilation and execution plan output (`--compile`)** — Parse, validate, and compile SQL, outputting the `InternalPlan` JSON execution plan without actually submitting the job, useful for preview and debugging.
+- **Resource template auto-generation (`--init-resource`)** — Automatically extract the Transformation DAG structure from the current SQL script and generate a per-operator resource configuration JSON template. Users can modify values and inject them directly.
+- **Flink 1.x / 2.x dual-version compatibility** — Bypass SPI compatibility checks via `ApplicationOperationExecutor`, and fix the `URI→URL` type conversion `ArrayStoreException` via `UriSafeSessionContext`, enabling normal job startup in Application Mode.
+- **Deterministic operator UID generation** — Force-enable `TABLE_EXEC_UID_GENERATION = ALWAYS` to ensure every Transformation has a stable UID, serving as the exact match key in the resource configuration JSON.
+- **Formatted SQL result printing** — Compatible with Flink 1.x/2.x `TableauStyle` result table rendering, with exponential backoff via `RowDataIterator` for polling results.
+- **Exception hierarchy** — Define `SqlValidateException`, `SqlCompileException`, and `SqlParsePosException`; SQL parse errors carry source line and column position information.
+- **Experimental API marker** — Introduce the `@Experimental` annotation to mark incubating APIs such as the DAG printer.
+- **DAG topology visualization (experimental)** — ASCII-art rendering of the Transformation DAG, supporting typical topologies such as dual-source Join, Union, and multi-way aggregation in the console.
 
 ### Build & CI
 
-- 添加 Apache 2.0 License 头，完善开源合规文件
-- 配置 Spotless 代码风格检查
-- 配置 Maven shade plugin 打包 fat JAR
-- 配置 GitHub Actions CI（Java 11/17/21 矩阵构建）
+- Maven-based build with Shade Plugin configured for fat JAR packaging; main class is `SqlEntryPoint`.
+- Spotless configured for code formatting and automatic Apache 2.0 License Header injection.
+- GitHub Actions CI configured with Java 11 / 17 / 21 matrix builds.
+- 45 unit tests covering core executor, resource injection, entry-point security, and resource spec signing logic.
 
-### Other
+### Documentation
 
-- 清理重复的 SQL 示例文件
-- 忽略 AI 开发工具配置文件
+- Complete Chinese and English READMEs, including Quick Start, CLI options, and configuration examples.
+- Capability boundary documentation ([CAPABILITIES.md](docs/CAPABILITIES.md)).
+- Domain glossary ([CONTEXT.md](CONTEXT.md)).
+- SQL examples ([`example-word-count.sql`](src/main/resources/example-word-count.sql), [`example-word-count-advanced.sql`](src/main/resources/example-word-count-advanced.sql)).
+- Catalog snapshot example ([`example-catalog.json`](src/main/resources/example-catalog.json)).
+- Operator resource configuration example ([`example-resource.json`](src/main/resources/example-resource.json)).
+- Sample UDF JARs (`example-udf-reverse.jar`, `example-udf-substring.jar`).
+- AI Agent collaboration guidelines (`docs/agents/`).
