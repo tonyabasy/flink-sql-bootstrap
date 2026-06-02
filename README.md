@@ -55,7 +55,9 @@ Native Flink SQL has three pain points in production:
 2. **Multi-Statement SQL Script** — Write `CREATE TABLE`, `SET`, `INSERT`, and `CALL` statements in a single `.sql` file. The launcher splits, validates, and orchestrates execution automatically.
 3. **Fine-Grained Resource Tuning** — Generate a resource template via `--init-resource`, tune parallelism and resources per operator, and inject them into the Flink DAG before job submission.
 4. **Universal Protocol Support** — Load SQL scripts and configs from `classpath:`, `file://`, `http(s)://`, `hdfs://`, or `s3://`.
-5. **Flink 1.20+ Compatible** — Works with Flink 1.20 and later without modifying the Flink engine or Planner.
+5. **All Flink Deployment Modes** — Works with Standalone, Per-Job, Application, and Session modes on Local, YARN, and Kubernetes.
+6. **SQL Validation with Line-Level Diagnostics** — Validate SQL syntax via `--validate` without submitting to a Flink cluster. Errors are reported with exact line and column numbers for rapid iteration.
+7. **Flink 1.20+ Compatible** — Works with Flink 1.20 and later without modifying the Flink engine or Planner. (More versions will be supported in the future.)
 
 ---
 
@@ -110,15 +112,14 @@ CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
 GROUP BY word;
 ```
 
-After submission, you'll see output similar to:
+After submission, you'll see output similar to (values vary since datagen generates random data):
 
 ```
 Flink SQL> INSERT INTO sink_table
            SELECT word, COUNT(*) AS cnt ...
-> +I[hello, 1]
-> +I[world, 1]
-> +I[flink, 3]
-> +I[sql, 2]
+> +I[<random_hex_string>, 1]
+> +I[<random_hex_string>, 1]
+> +I[<random_hex_string>, 1]
 ```
 
 ### Step 2 — Generate & Inject Resource Config
@@ -133,18 +134,41 @@ $FLINK_HOME/bin/flink run \
     --init-resource
 ```
 
-Output (excerpt):
+Output:
 
 ```json
 {
-  "version": 1,
-  "operators": [
-    { "uid": "1_source", "name": "ods_words[1]", "parallelism": 1, "resource": { "cpu": 0.25, "heap": "512 MB" } },
-    { "uid": "5_group-aggregate", "name": "GroupAggregate[5]", "parallelism": -1, "resource": { "cpu": 0.25, "heap": "512 MB" } },
-    { "uid": "6_sink", "name": "dws_word_count[6]", "parallelism": -1, "resource": { "cpu": 0.25, "heap": "512 MB" } }
-  ]
+  "version" : 1,
+  "operators" : [ {
+    "uid" : "1_source",
+    "name" : "source_table[1]",
+    "parallelism" : 1,
+    "chainStrategy" : "HEAD"
+  }, {
+    "uid" : "2_correlate",
+    "name" : "Correlate[2]",
+    "parallelism" : 1,
+    "chainStrategy" : "ALWAYS"
+  }, {
+    "uid" : "3_calc",
+    "name" : "Calc[3]",
+    "parallelism" : 1,
+    "chainStrategy" : "ALWAYS"
+  }, {
+    "uid" : "5_group-aggregate",
+    "name" : "GroupAggregate[5]",
+    "parallelism" : -1,
+    "chainStrategy" : "ALWAYS"
+  }, {
+    "uid" : "6_sink",
+    "name" : "sink_table[6]",
+    "parallelism" : -1,
+    "chainStrategy" : "ALWAYS"
+  } ]
 }
 ```
+
+The generated template gives each operator a `uid`, `name`, default `parallelism`, and `chainStrategy`. Edit these fields to tune parallelism and chaining, then add `resource` entries for CPU/memory (see [Resource Hint JSON](#resource-hint-json) for available fields).
 
 Save the output as `resource.json`, tune the values, and submit with resources:
 
@@ -179,6 +203,16 @@ SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
 FROM ods_words
 CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
 GROUP BY my_reverse(my_substring(word, 0, 2));
+```
+
+Output (note the 2-character prefixes — the `my_reverse(my_substring(...))` UDF is taking effect):
+
+```
+Job has been submitted with JobID <job_id>
++I[6a, 1]
++I[00, 1]
++I[a3, 1]
++I[8f, 1]
 ```
 
 ---

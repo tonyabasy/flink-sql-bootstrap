@@ -55,7 +55,9 @@
 2. **Multi-Statement SQL Script** —— 在单个 `.sql` 文件中编写 `CREATE TABLE`、`SET`、`INSERT`、`CALL` 等语句。启动器自动切分、校验并编排执行。
 3. **细粒度资源调优** —— 通过 `--init-resource` 生成资源模板，按算子调整并行度和资源，并在作业提交前注入 Flink DAG。
 4. **多协议资源加载** —— 支持从 `classpath:`、`file://`、`http(s)://`、`hdfs://`、`s3://` 加载 SQL 脚本和配置。
-5. **Flink 1.20+ 兼容** —— 适配 Flink 1.20 及以后版本，不修改 Flink 引擎或 Planner。
+5. **支持所有 Flink 部署模式** —— 支持 Standalone、Per-Job、Application、Session 模式，以及 Local、YARN、Kubernetes 等资源环境。
+6. **SQL 语法校验与行级错误定位** —— 通过 `--validate` 在本地快速校验 SQL 语法，无需提交到 Flink 集群。错误信息精确到行号和列号，便于快速迭代。
+7. **Flink 1.20+ 兼容** —— 适配 Flink 1.20 及以后版本，不修改 Flink 引擎或 Planner。（未来会持续适配更多版本）。
 
 ---
 
@@ -110,15 +112,14 @@ CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
 GROUP BY word;
 ```
 
-执行后将在控制台看到类似输出：
+执行后将在控制台看到类似输出（实际值可能是随机字符串，因为 datagen 生成随机数据）：
 
 ```
 Flink SQL> INSERT INTO sink_table
            SELECT word, COUNT(*) AS cnt ...
-> +I[hello, 1]
-> +I[world, 1]
-> +I[flink, 3]
-> +I[sql, 2]
+> +I[<random_hex_string>, 1]
+> +I[<random_hex_string>, 1]
+> +I[<random_hex_string>, 1]
 ```
 
 ### Step 2 — 生成并注入资源配置
@@ -133,18 +134,41 @@ $FLINK_HOME/bin/flink run \
     --init-resource
 ```
 
-输出示例（节选）：
+输出示例：
 
 ```json
 {
-  "version": 1,
-  "operators": [
-    { "uid": "1_source", "name": "ods_words[1]", "parallelism": 1, "resource": { "cpu": 0.25, "heap": "512 MB" } },
-    { "uid": "5_group-aggregate", "name": "GroupAggregate[5]", "parallelism": -1, "resource": { "cpu": 0.25, "heap": "512 MB" } },
-    { "uid": "6_sink", "name": "dws_word_count[6]", "parallelism": -1, "resource": { "cpu": 0.25, "heap": "512 MB" } }
-  ]
+  "version" : 1,
+  "operators" : [ {
+    "uid" : "1_source",
+    "name" : "source_table[1]",
+    "parallelism" : 1,
+    "chainStrategy" : "HEAD"
+  }, {
+    "uid" : "2_correlate",
+    "name" : "Correlate[2]",
+    "parallelism" : 1,
+    "chainStrategy" : "ALWAYS"
+  }, {
+    "uid" : "3_calc",
+    "name" : "Calc[3]",
+    "parallelism" : 1,
+    "chainStrategy" : "ALWAYS"
+  }, {
+    "uid" : "5_group-aggregate",
+    "name" : "GroupAggregate[5]",
+    "parallelism" : -1,
+    "chainStrategy" : "ALWAYS"
+  }, {
+    "uid" : "6_sink",
+    "name" : "sink_table[6]",
+    "parallelism" : -1,
+    "chainStrategy" : "ALWAYS"
+  } ]
 }
 ```
+
+生成的模板为每个算子分配了 `uid`、`name`、默认 `parallelism` 和 `chainStrategy`。修改这些字段可调整并行度和链策略，然后添加 `resource` 字段配置 CPU/内存（支持的字段见[资源调优 JSON](#资源调优-json)）。
 
 将输出保存为 `resource.json`，修改参数后带资源配置提交：
 
@@ -179,6 +203,16 @@ SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
 FROM ods_words
 CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
 GROUP BY my_reverse(my_substring(word, 0, 2));
+```
+
+输出（注意 2 字符前缀 —— `my_reverse(my_substring(...))` UDF 已生效）：
+
+```
+Job has been submitted with JobID <job_id>
++I[6a, 1]
++I[00, 1]
++I[a3, 1]
++I[8f, 1]
 ```
 
 ---
