@@ -210,7 +210,6 @@ public class SqlEntryPoint {
         }
         SessionEnvironment ssEnv = builder.build();
 
-        // FIXME-20260601 这个 UUID 用于 table.resources.download-dir，这个配置是用来做什么的？对这个项目有影响吗？影响是什么？
         SessionHandle sessionHandle = new SessionHandle(UUID.randomUUID());
         SessionContext sessionContext = UriSafeSessionContext.create(
                 defaultContext, mergedDependencies, sessionHandle, ssEnv, Executors.newDirectExecutorService());
@@ -249,6 +248,9 @@ public class SqlEntryPoint {
         for (URI dep : dependencies) {
             if ("classpath".equals(dep.getScheme())) {
                 String resourceName = dep.getSchemeSpecificPart();
+                if (resourceName.contains("..") || resourceName.startsWith("/")) {
+                    throw new SecurityException("Invalid classpath resource path: " + resourceName);
+                }
                 File tempJar = new File(tempDir, resourceName);
                 try (InputStream is = cl.getResourceAsStream(resourceName)) {
                     if (is == null) {
@@ -340,9 +342,6 @@ public class SqlEntryPoint {
             }
 
             String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
-            // FIXME
-            System.out.println("！！依赖：" + Arrays.toString(dependencies));
-            System.out.println("！！依赖（绝对路径）" + Arrays.stream(dependencies).map(cl::getResource).collect(Collectors.toList()));
 
             boolean isCompile = line.hasOption(OPTION_SCRIPT_COMPILE.getLongOpt());
             boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());

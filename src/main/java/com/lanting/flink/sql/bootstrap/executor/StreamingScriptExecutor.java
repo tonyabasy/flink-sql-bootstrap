@@ -288,9 +288,6 @@ public class StreamingScriptExecutor {
                 // 解析 profile → 具体值（如 "small" → 0.25 CPU + 512 MB heap）
                 OperatorResourceSpec r = op.getResource().resolve();
 
-                // FIXME DEBUG
-                System.out.println("!!DEBUGGER: " + JSON.toJSONString(r));
-
                 // 使用 SlotSharingGroup 传递资源，而不是 setResources()。
                 // setResources() 会导致 JobGraph.isPartialResourceConfigured() 检查失败，
                 // 因为 Flink 当前禁止部分顶点配置资源、部分不配。
