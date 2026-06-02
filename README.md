@@ -28,7 +28,7 @@ See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
 | Dependency | Version |
 |------------|---------|
 | Java | 11+ |
-| Flink | 2.2.0 |
+| Flink | 1.20.x / 2.2.0 |
 
 ### Submitting a Job
 
@@ -36,12 +36,23 @@ See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
 # Build
 mvn package -DskipTests
 
-# Submit
-flink run target/flink-sql-bootstrap.jar \
-    --script-file /path/to/job.sql \
-    --catalog-file /path/to/catalog.json \
-    --resource-file /path/to/resource.json \
-    --dependency /path/to/udf.jar
+# Submit with all options
+$FLINK_HOME/bin/flink run \
+    --target local \
+    -Dpipeline.name="My First SQL Job" \
+    /path/to/flink-sql-bootstrap.jar \
+    --script-file classpath:example-word-count.sql \
+    --resource-file classpath:example-resource.json \
+    --catalog-file classpath:example-catalog.json \
+    --dependency classpath:example-udf-reverse.jar \
+    --dependency classpath:example-udf-substring.jar
+
+# All file parameters support the following protocols:
+#   classpath:  - read from application JAR resources
+#   http(s)://  - fetch from remote HTTP server
+#   /path/to    - read from local file system
+#   hdfs://     - read from HDFS or other DFS via Flink FileSystem
+#   s3://       - read from S3 via Flink FileSystem
 ```
 
 ## Contributing

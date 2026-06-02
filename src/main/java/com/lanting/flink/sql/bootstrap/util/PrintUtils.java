@@ -34,15 +34,10 @@ import org.apache.commons.cli.Options;
  * @since 2026-05-29
  */
 public class PrintUtils {
-
-    private static final int SLOT = 30;  // 每个节点的横向槽宽（字符数），越长节点标签越不容易重叠
-    private static final int ROW_H = 5;   // 每层占用的行数（节点名 1 行 + 连线 4 行）
-    private static final int PAD = 1;   // 画布上下各留的空白行
-
     /**
      * 打印一行文本到控制台
      */
-    public static void print(String s) {
+    public static void println(String s) {
         System.out.println(s);
     }
 

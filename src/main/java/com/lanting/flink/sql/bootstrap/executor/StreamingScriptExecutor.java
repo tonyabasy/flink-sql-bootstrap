@@ -18,6 +18,7 @@
  */
 package com.lanting.flink.sql.bootstrap.executor;
 
+import com.lanting.flink.sql.bootstrap.flink.ApplicationOperationExecutor;
 import com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec;
 import com.lanting.flink.sql.bootstrap.resource.OperatorSpec;
 import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
@@ -25,9 +26,9 @@ import com.lanting.flink.sql.bootstrap.util.JSON;
 
 import org.apache.flink.api.common.operators.SlotSharingGroup;
 import org.apache.flink.api.dag.Transformation;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.MemorySize;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.streaming.api.transformations.PhysicalTransformation;
 import org.apache.flink.table.api.SqlParserEOFException;
@@ -37,9 +38,7 @@ import org.apache.flink.table.api.internal.TableResultInternal;
 import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.operation.OperationHandle;
 import org.apache.flink.table.gateway.api.utils.SqlGatewayException;
-import org.apache.flink.table.gateway.service.application.Printer;
 import org.apache.flink.table.gateway.service.context.SessionContext;
-import org.apache.flink.table.gateway.service.operation.OperationExecutor;
 import org.apache.flink.table.gateway.service.result.ResultFetcher;
 import org.apache.flink.table.operations.ModifyOperation;
 import org.apache.flink.table.operations.Operation;
@@ -61,11 +60,10 @@ import lombok.Setter;
  *
  * <h3>改造背景</h3>
  *
- * <p>Flink 内置的 {@link org.apache.flink.table.gateway.service.application.ScriptExecutor}
- * 采用「边切边执行」的模式：SQL 按 {@code ;} 切分后立即通过 {@link OperationExecutor} 执行。
- * 但 {@link OperationExecutor#executeStatement} 对 DML 是原子调用——内部
- * {@code translate()} → {@code executeAsync()} 一步完成，没有机会在中间注入算子级别的资源
- * （并行度、CPU 核数、堆内存等）。
+ * <p>Flink 2.x 内置的 ScriptExecutor 采用「边切边执行」的模式：SQL 按 {@code ;} 切分后立即通
+ * 过 {@link ApplicationOperationExecutor} 执行。但 {@link ApplicationOperationExecutor#executeStatement} 对
+ * DML 是原子调用——内部 {@code translate()} → {@code executeAsync()} 一步完成，没有机会在中
+ * 间注入算子级别的资源（并行度、CPU 核数、堆内存等）。
  *
  * <p>如果直接修改 {@code OperationExecutor} 的内部逻辑（比如重写私有方法或用 JDK Proxy），
  * 侵入性太强且不够直观。因此本类选择在「Operation 分发层」下手：
@@ -75,7 +73,7 @@ import lombok.Setter;
  *       确保注释、引号、分号的处理与原版一致。</li>
  *   <li><b>预解析 Operation</b>：切分过程中同时执行 {@code parse()}，将 SQL 转换为
  *       {@link Operation}，并提前判断是否属于 DML（{@link ModifyOperation} / {@link StatementSetOperation}）。</li>
- *   <li><b>延迟 DML 执行</b>：非 DML（DDL、SET、CALL 等）仍用 {@link OperationExecutor#executeStatement}
+ *   <li><b>延迟 DML 执行</b>：非 DML（DDL、SET、CALL 等）仍用 {@link ApplicationOperationExecutor#executeStatement}
  *       立即执行，保证 catalog 状态及时更新。DML 暂存到 {@link Result#modifyOperations}，留到
  *       {@link #compile(List)}、{@link #transform(InternalPlan)} 和 {@link #execute()} 阶段统一处理。</li>
  *   <li><b>自定义 DML 路径</b>：{@code compile()} → {@code planner.compilePlan()} 编译、
@@ -87,8 +85,7 @@ import lombok.Setter;
  * <p>当前仅支持 {@code STREAMING} 模式。
  *
  * @author wangzhao
- * @see org.apache.flink.table.gateway.service.application.ScriptExecutor
- * @see OperationExecutor
+ * @see ApplicationOperationExecutor
  * @since 2026-05-18
  */
 @SuppressWarnings("unused")
@@ -168,6 +165,7 @@ public class StreamingScriptExecutor {
                 if (result.error != null) {
                     throw result.error;
                 } else if (result.fetcher != null) {
+                    printer.print(result.statement);
                     printer.print(result.fetcher);
                 }
 
@@ -268,7 +266,7 @@ public class StreamingScriptExecutor {
                 op = resourceSpec.findByName(t.getName());
             }
             if (op == null) {
-                continue;
+                throw new IllegalArgumentException("Inject operator resource failed: Operation " + t.getUid() + "[" + t.getName() + "]" + " not found.");
             }
 
             // 用户指定了稳定 UID 时覆盖 Flink 自动生成的（用于 savepoint 对齐）
@@ -289,6 +287,9 @@ public class StreamingScriptExecutor {
             if (op.getResource() != null) {
                 // 解析 profile → 具体值（如 "small" → 0.25 CPU + 512 MB heap）
                 OperatorResourceSpec r = op.getResource().resolve();
+
+                // FIXME DEBUG
+                System.out.println("!!DEBUGGER: " + JSON.toJSONString(r));
 
                 // 使用 SlotSharingGroup 传递资源，而不是 setResources()。
                 // setResources() 会导致 JobGraph.isPartialResourceConfigured() 检查失败，
@@ -334,7 +335,7 @@ public class StreamingScriptExecutor {
      *
      * <p>如果尚未调用 {@link #validate(String)}、{@link #compile(List)} 或 {@link #transform(InternalPlan)}，
      * 会由 {@link #prepare()} 自动补齐。
-     * 非 DML 语句在 validate 阶段已由 {@link OperationExecutor} 执行完毕。
+     * 非 DML 语句在 validate 阶段已由 {@link ApplicationOperationExecutor} 执行完毕。
      *
      * <p>DML 执行路径：
      * <ol>
@@ -526,7 +527,7 @@ public class StreamingScriptExecutor {
     /**
      * SQL 切分迭代器，内部维护状态机逐字符扫描，支持引号、注释、分号跳转。
      *
-     * <p>每次 {@link #hasNext()} 都会重建 {@link OperationExecutor}，因为上一条 DDL 可能改变了
+     * <p>每次 {@link #hasNext()} 都会重建 {@link ApplicationOperationExecutor}，因为上一条 DDL 可能改变了
      * planner 的状态（如注册临时函数）。
      *
      * <p>与 Flink 原版 {@code ScriptExecutor.ResultIterator} 行为一致。
@@ -548,7 +549,7 @@ public class StreamingScriptExecutor {
         private String statement;
         private Operation operation;
         private Throwable throwable;
-        private OperationExecutor executor;
+        private ApplicationOperationExecutor executor;
 
         public ResultIterator(String script) {
             this.script = script;
@@ -572,12 +573,12 @@ public class StreamingScriptExecutor {
             char currentChar = 0;
 
             boolean hasNext = false;
+            // 兼容说明：Flink 1.x 和 2.x 的 OperationExecutor 构造器不同：
+            //   2.x 有两个构造器 — 2-arg (测试用，固定 StreamExecutionEnvironment::new) 和
+            //   3-arg (生产用，接收 BiFunction<Configuration, ClassLoader, StreamExecutionEnvironment>)。
+            //   1.x 仅有 2-arg 构造器。当前使用 2-arg 构造器，在两者上均可工作。
             // 每次重建 executor，因为上一条 DDL 可能改变了 planner 状态（如注册临时函数）
-            executor =
-                    new OperationExecutor(
-                            context,
-                            (config, classloader) ->
-                                    StreamExecutionEnvironment.getExecutionEnvironment(config));
+            executor = new ApplicationOperationExecutor(context, new Configuration());
             for (int i = position; i < script.length(); i++) {
                 char lastChar = currentChar;
                 currentChar = script.charAt(i);
@@ -683,7 +684,7 @@ public class StreamingScriptExecutor {
          * <p>DML（{@link ModifyOperation} / {@link StatementSetOperation}）只解析不执行，
          * 将 {@link ModifyOperation} 暂存到 {@link Result#modifyOperations} 中，留待
          * 外层 {@link #compile(List)}、{@link #transform(InternalPlan)} 和 {@link #execute()} 做资源注入后统一提交。
-         * 非 DML 语句立即通过 {@link OperationExecutor#executeStatement} 执行。
+         * 非 DML 语句立即通过 {@link ApplicationOperationExecutor#executeStatement} 执行。
          */
         @Override
         public Result next() {
@@ -825,7 +826,7 @@ public class StreamingScriptExecutor {
     /**
      * SQL 语句切分结果。
      *
-     * <p>包含切分后的 SQL 原文、解析后的 {@link Operation}、对应的 {@link OperationExecutor}，
+     * <p>包含切分后的 SQL 原文、解析后的 {@link Operation}、对应的 {@link ApplicationOperationExecutor}，
      * 以及执行结果（DML 暂存 {@link #modifyOperations}，非 DML 暂存 {@link #fetcher}）。
      */
     @Getter
@@ -833,25 +834,25 @@ public class StreamingScriptExecutor {
 
         final String statement;
         final Operation operation;
-        final OperationExecutor executor;
+        final ApplicationOperationExecutor executor;
         final List<ModifyOperation> modifyOperations;
         final @Nullable ResultFetcher fetcher;
         final @Nullable Throwable error;
 
-        public Result(String statement, Operation operation, OperationExecutor executor, ResultFetcher fetcher) {
+        public Result(String statement, Operation operation, ApplicationOperationExecutor executor, ResultFetcher fetcher) {
             this(statement, operation, executor, null, fetcher, null);
         }
 
-        public Result(String statement, Operation operation, OperationExecutor executor, List<ModifyOperation> modifyOperations) {
+        public Result(String statement, Operation operation, ApplicationOperationExecutor executor, List<ModifyOperation> modifyOperations) {
             this(statement, operation, executor, modifyOperations, null, null);
         }
 
-        public Result(String statement, Operation operation, OperationExecutor executor, Throwable error) {
+        public Result(String statement, Operation operation, ApplicationOperationExecutor executor, Throwable error) {
             this(statement, operation, executor, null, null, error);
         }
 
         private Result(
-                String statement, Operation operation, OperationExecutor executor, @Nullable List<ModifyOperation> modifyOperations, @Nullable ResultFetcher fetcher, @Nullable Throwable error) {
+                String statement, Operation operation, ApplicationOperationExecutor executor, @Nullable List<ModifyOperation> modifyOperations, @Nullable ResultFetcher fetcher, @Nullable Throwable error) {
             this.statement = statement;
             this.operation = operation;
             this.executor = executor;

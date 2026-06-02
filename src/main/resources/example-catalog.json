@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "snapshotId": "example-word-count",
+  "catalogName": "platform",
+  "databaseName": "default",
+  "flinkVersion": "1.20",
+  "createdAt": 1717200000000,
+  "tables": [
+    {
+      "database": "default",
+      "name": "source_table",
+      "comment": "datagen source — 自动生成句子",
+      "columns": [
+        {
+          "name": "sentence",
+          "type": "STRING",
+          "nullable": true,
+          "comment": "原始句子",
+          "isComputed": false,
+          "isMetadata": false,
+          "watermarkExpr": null
+        }
+      ],
+      "watermark": null,
+      "primaryKey": null,
+      "partitionKeys": [],
+      "options": {
+        "connector": "datagen",
+        "rows-per-second": "1"
+      }
+    },
+    {
+      "database": "default",
+      "name": "sink_table",
+      "comment": "print sink — 标准输出",
+      "columns": [
+        {
+          "name": "word",
+          "type": "STRING",
+          "nullable": true,
+          "comment": "单词",
+          "isComputed": false,
+          "isMetadata": false,
+          "watermarkExpr": null
+        },
+        {
+          "name": "cnt",
+          "type": "BIGINT",
+          "nullable": true,
+          "comment": "计数",
+          "isComputed": false,
+          "isMetadata": false,
+          "watermarkExpr": null
+        }
+      ],
+      "watermark": null,
+      "primaryKey": null,
+      "partitionKeys": [],
+      "options": {
+        "connector": "print"
+      }
+    }
+  ],
+  "views": [],
+  "udfs": [
+    {
+      "name": "my_reverse",
+      "kind": "SCALAR",
+      "description": "字符串反转",
+      "className": "examples.udf.MyReverseFunction",
+      "functionLanguage": "JAVA",
+      "jarRef": "example-udf-reverse.jar"
+    },
+    {
+      "name": "my_substring",
+      "kind": "SCALAR",
+      "description": "字符串反转",
+      "className": "examples.udf2.MySubstringFunction",
+      "functionLanguage": "JAVA",
+      "jarRef": "example-udf-substring.jar"
+    }
+  ]
+}

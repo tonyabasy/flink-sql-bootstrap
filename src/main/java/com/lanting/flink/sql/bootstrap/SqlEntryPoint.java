@@ -18,9 +18,11 @@
  */
 package com.lanting.flink.sql.bootstrap;
 
-import static com.lanting.flink.sql.bootstrap.util.PrintUtils.*;
+import static com.lanting.flink.sql.bootstrap.util.PrintUtils.printHelp;
+import static com.lanting.flink.sql.bootstrap.util.PrintUtils.println;
 
 import com.lanting.flink.sql.bootstrap.catalog.CatalogEntityFactory;
+import com.lanting.flink.sql.bootstrap.executor.Printer;
 import com.lanting.flink.sql.bootstrap.executor.StreamingScriptExecutor;
 import com.lanting.flink.sql.bootstrap.flink.UriSafeSessionContext;
 import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
@@ -40,10 +42,8 @@ import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.session.SessionEnvironment;
 import org.apache.flink.table.gateway.api.session.SessionHandle;
 import org.apache.flink.table.gateway.rest.util.SqlGatewayRestAPIVersion;
-import org.apache.flink.table.gateway.service.application.Printer;
 import org.apache.flink.table.gateway.service.context.DefaultContext;
 import org.apache.flink.table.gateway.service.context.SessionContext;
-import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.Executors;
 
@@ -51,11 +51,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -190,11 +189,15 @@ public class SqlEntryPoint {
         // 合并依赖并写入 Configuration，通过 Pipeline.classpath -> BlobServer -> TM Download & load classpath 链路加载到各个 TM 节点
         Configuration configuration = (Configuration) env.getConfiguration();
         List<URI> mergedDependencies = mergeDependencies(ConfigUtils.decodeListFromConfig(configuration, PipelineOptions.CLASSPATHS, URI::create), argsContent.dependencies);
+        // 将 classpath: 协议的依赖 JAR 解压到临时目录，转为 file: URI，
+        // 否则 UriSafeSessionContext.toURL() 会因 Java 不认识 classpath scheme 而抛异常
+        mergedDependencies = resolveClasspathDependencies(mergedDependencies);
         ConfigUtils.encodeCollectionToConfig(configuration, PipelineOptions.CLASSPATHS, mergedDependencies, URI::toString);
 
         // 从配置 pipeline.jars 中获取依赖 Jar（如：UDFs Jar），如果使用 flink run 启动该配置是 -C 参数指定的 classpath
-        DefaultContext defaultContext = new DefaultContext(
-                (Configuration) env.getConfiguration(), mergedDependencies);
+        // Flink 1.x 兼容：因 Flink 2.x 构造器 2-arg 从 URL -> URI 导致和 Flink 1.x 彻底无法兼容，这里将 deps 在
+        // UriSafeSessionContext.create 传入用于创建对应的 ClassLoader（deps 只在创建 MutableURLClassLoader 时 使用）
+        DefaultContext defaultContext = new DefaultContext(configuration, null);
 
         // Catalog 快照是可选的 — 不传则由 SQL 中的 DDL 自行建表
         SessionEnvironment.Builder builder = SessionEnvironment.newBuilder()
@@ -207,9 +210,10 @@ public class SqlEntryPoint {
         }
         SessionEnvironment ssEnv = builder.build();
 
+        // FIXME-20260601 这个 UUID 用于 table.resources.download-dir，这个配置是用来做什么的？对这个项目有影响吗？影响是什么？
         SessionHandle sessionHandle = new SessionHandle(UUID.randomUUID());
         SessionContext sessionContext = UriSafeSessionContext.create(
-                defaultContext, sessionHandle, ssEnv, Executors.newDirectExecutorService());
+                defaultContext, mergedDependencies, sessionHandle, ssEnv, Executors.newDirectExecutorService());
 
         // 委托 StreamingScriptExecutor：切分 SQL → translate → 注入资源 → 提交
         try (AutoCloseable ignore = sessionContext::close) {
@@ -220,18 +224,44 @@ public class SqlEntryPoint {
             if (argsContent.isCompile) {
                 // 仅校验，不执行
                 InternalPlan compiledPlan = executor.compile(argsContent.script);
-                print("\n" + compiledPlan.asJsonString() + "\n");
-                print("Compile the SQL script successfully!");
+                println("\n" + compiledPlan.asJsonString() + "\n");
+                println("Compile the SQL script successfully!");
             } else if (argsContent.isInitResource) {
                 // 仅生成 Resource 初始化配置，不执行
                 ResourceEntity res = executor.generateResultSpec();
-                print(JSON.toJSONString(res, true));
+                println(JSON.toJSONString(res, true));
             } else {
                 // 执行 SQL Script
                 TableResult execute = executor.execute();
                 execute.print();
             }
         }
+    }
+
+    /**
+     * 将 classpath: 协议的依赖 JAR 解压到临时目录，转为 file: URI。
+     * Java 的 URLClassLoader 不识别 classpath scheme，需要提前转换。
+     */
+    private static List<URI> resolveClasspathDependencies(List<URI> dependencies) throws IOException {
+        File tempDir = new File(System.getProperty("java.io.tmpdir"), "flink-sql-bootstrap-deps");
+        tempDir.mkdirs();
+        List<URI> resolved = new ArrayList<>();
+        for (URI dep : dependencies) {
+            if ("classpath".equals(dep.getScheme())) {
+                String resourceName = dep.getSchemeSpecificPart();
+                File tempJar = new File(tempDir, resourceName);
+                try (InputStream is = cl.getResourceAsStream(resourceName)) {
+                    if (is == null) {
+                        throw new IllegalArgumentException("Classpath resource not found: " + resourceName);
+                    }
+                    Files.copy(is, tempJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+                resolved.add(tempJar.toURI());
+            } else {
+                resolved.add(dep);
+            }
+        }
+        return resolved;
     }
 
     /**
@@ -310,6 +340,9 @@ public class SqlEntryPoint {
             }
 
             String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
+            // FIXME
+            System.out.println("！！依赖：" + Arrays.toString(dependencies));
+            System.out.println("！！依赖（绝对路径）" + Arrays.stream(dependencies).map(cl::getResource).collect(Collectors.toList()));
 
             boolean isCompile = line.hasOption(OPTION_SCRIPT_COMPILE.getLongOpt());
             boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());
@@ -368,7 +401,7 @@ public class SqlEntryPoint {
         FileSystem fs = path.getFileSystem();
         try (FSDataInputStream inputStream = fs.open(path)) {
             return new String(
-                    FileUtils.read(inputStream, (int) fs.getFileStatus(path).getLen()),
+                    IOUtils.toByteArray(inputStream),
                     StandardCharsets.UTF_8);
         }
     }

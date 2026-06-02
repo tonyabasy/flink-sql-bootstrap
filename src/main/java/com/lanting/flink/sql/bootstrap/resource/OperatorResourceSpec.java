@@ -116,13 +116,6 @@ public class OperatorResourceSpec {
         this.externalResources = externalResources;
     }
 
-    public String getProfile() {
-        if (profile == null) {
-            profile = generateName(this);
-        }
-        return profile;
-    }
-
     /**
      * 解析为具体的资源值。若设置了 {@code profile}，则替换为对应的预置规格字段；
      * 否则保持原显式值。
@@ -130,8 +123,12 @@ public class OperatorResourceSpec {
      * @return 解析后的 OperatorResource（新对象，不修改原对象）
      */
     public OperatorResourceSpec resolve() {
-        return profile != null && STANDARD.get(profile.toLowerCase(Locale.ROOT)) != null ?
-                STANDARD.get(profile.toLowerCase(Locale.ROOT)) : this;
+        if (profile == null) {
+            profile = generateName(this);
+            return this;
+        }
+        OperatorResourceSpec standardSpec = STANDARD.get(profile.toLowerCase(Locale.ROOT));
+        return standardSpec != null ? standardSpec : this;
     }
 
     /**

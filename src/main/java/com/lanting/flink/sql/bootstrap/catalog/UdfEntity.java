@@ -52,6 +52,9 @@ public class UdfEntity {
     String description;
     @JsonProperty("functionLanguage")
     String functionLanguage;
+    /**
+     * 仅用于血缘统计，不作为 Resource 加载依据
+     */
     @JsonProperty("jarRef")
     String jarRef;
     /**

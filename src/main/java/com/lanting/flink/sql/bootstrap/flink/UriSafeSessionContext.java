@@ -56,15 +56,19 @@ public class UriSafeSessionContext extends SessionContext {
     }
 
     public static SessionContext create(DefaultContext defaultContext,
+                                        List<URI> dependencies,
                                         SessionHandle sessionId,
                                         SessionEnvironment environment,
                                         ExecutorService operationExecutorService) {
+        // 该 Configuration 即全局唯一 Configuration，包含：
+        // 1. 用户 Configuration（from DefaultContext）
+        // 2. 自定义 Catalog Environment（from SessionEnvironment）
         Configuration configuration =
                 SessionContext.initializeConfiguration(defaultContext, environment, sessionId);
 
         final MutableURLClassLoader userClassLoader =
                 FlinkUserCodeClassLoaders.create(
-                        toURL(defaultContext.getDependencies()),
+                        toURL(dependencies),
                         SessionContext.class.getClassLoader(),
                         configuration);
         final ResourceManager resourceManager = new ResourceManager(configuration, userClassLoader);
