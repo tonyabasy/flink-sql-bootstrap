@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -39,7 +40,7 @@ import lombok.NoArgsConstructor;
  * <p>支持两种配置方式：
  * <ol>
  *   <li><b>预置规格</b>：设置 {@code profile} 字段（如 {@code "small"}），自动匹配预置常量。</li>
- *   <li><b>显式值</b>：直接设置 {@code cpuCores}、{@code heapMemory} 等字段。</li>
+ *   <li><b>显式值</b>：直接设置 {@code cpu}、{@code heap} 等字段。</li>
  * </ol>
  * 通过 {@link #resolve()} 统一解析为具体的资源值。
  *
@@ -90,30 +91,30 @@ public class OperatorResourceSpec {
      * 预置规格名称，如 "small"、"normal"、"large"、"xlarge"。设置后优先于显式值。
      */
     private String profile;
-    private Double cpuCores;
-    private String heapMemory;
-    private String offHeapMemory;
-    private String managedMemory;
-    private Map<String, Double> externalResources;
+    private Double cpu;
+    private String heap;
+    private String offHeap;
+    private String managed;
+    private Map<String, Double> external;
 
-    OperatorResourceSpec(String profile, Double cpuCores, String heapMemory, String offHeapMemory,
-                         String managedMemory) {
+    OperatorResourceSpec(String profile, Double cpu, String heap, String offHeap,
+                         String managed) {
         this.profile = profile;
-        this.cpuCores = cpuCores;
-        this.heapMemory = heapMemory;
-        this.offHeapMemory = offHeapMemory;
-        this.managedMemory = managedMemory;
-        this.externalResources = Collections.emptyMap();
+        this.cpu = cpu;
+        this.heap = heap;
+        this.offHeap = offHeap;
+        this.managed = managed;
+        this.external = Collections.emptyMap();
     }
 
-    public OperatorResourceSpec(Double cpuCores, String heapMemory, String offHeapMemory,
-                                String managedMemory, Map<String, Double> externalResources) {
+    public OperatorResourceSpec(Double cpu, String heap, String offHeap,
+                                String managed, Map<String, Double> external) {
+        this.cpu = cpu;
+        this.heap = heap;
+        this.offHeap = offHeap;
+        this.managed = managed;
+        this.external = external;
         this.profile = generateName(this);
-        this.cpuCores = cpuCores;
-        this.heapMemory = heapMemory;
-        this.offHeapMemory = offHeapMemory;
-        this.managedMemory = managedMemory;
-        this.externalResources = externalResources;
     }
 
     /**
@@ -138,33 +139,69 @@ public class OperatorResourceSpec {
      * <p>内存值会先经 {@link MemorySize#parse(String)} 规范化，
      * 保证 {@code "512 MB"} 和 {@code "512m"} 得到相同签名。
      *
-     * @return 资源签名，如 {@code "cpu0.25-heap524288000b"} 或 {@code "preset:small"}
+     * @return 资源签名，如 {@code "small"}（预置规格）或 MD5 哈希（自定义规格）
      */
     public static String generateName(OperatorResourceSpec optResource) {
+        // 匹配预置规格：资源值与 STANDARD 之一完全一致时返回预置名称
+        for (Map.Entry<String, OperatorResourceSpec> entry : STANDARD.entrySet()) {
+            if (resourceEquals(entry.getValue(), optResource)) {
+                return entry.getKey();
+            }
+        }
+        // 自定义规格：计算 MD5 签名
         StringBuilder sb = new StringBuilder();
-        sb.append("cpu").append(optResource.cpuCores);
+        sb.append("cpu").append(optResource.cpu);
 
-        if (optResource.heapMemory != null && !optResource.heapMemory.isEmpty()) {
-            sb.append("-heap").append(MemorySize.parse(optResource.heapMemory).getBytes()).append('b');
+        if (optResource.heap != null && !optResource.heap.isEmpty()) {
+            sb.append("-heap").append(MemorySize.parse(optResource.heap).getBytes()).append('b');
         } else {
             sb.append("-heap0b");
         }
-        if (optResource.offHeapMemory != null && !optResource.offHeapMemory.isEmpty()) {
-            sb.append("-offheap").append(MemorySize.parse(optResource.offHeapMemory).getBytes()).append('b');
+        if (optResource.offHeap != null && !optResource.offHeap.isEmpty()) {
+            sb.append("-offheap").append(MemorySize.parse(optResource.offHeap).getBytes()).append('b');
         } else {
             sb.append("-offheap0b");
         }
-        if (optResource.managedMemory != null && !optResource.managedMemory.isEmpty()) {
-            sb.append("-managed").append(MemorySize.parse(optResource.managedMemory).getBytes()).append('b');
+        if (optResource.managed != null && !optResource.managed.isEmpty()) {
+            sb.append("-managed").append(MemorySize.parse(optResource.managed).getBytes()).append('b');
         } else {
             sb.append("-managed0b");
         }
-        if (optResource.externalResources != null && !optResource.externalResources.isEmpty()) {
-            optResource.externalResources.entrySet().stream()
+        if (optResource.external != null && !optResource.external.isEmpty()) {
+            optResource.external.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
                     .forEach(e -> sb.append('-').append(e.getKey()).append('=').append(e.getValue()));
         }
         return DigestUtils.md5Hex(sb.toString());
+    }
+
+    /**
+     * 判断两个规格的资源值（CPU、内存、外部资源）是否完全一致。
+     */
+    public static boolean resourceEquals(OperatorResourceSpec a, OperatorResourceSpec b) {
+        return Objects.equals(a.cpu, b.cpu)
+                && Objects.equals(a.heap, b.heap)
+                && Objects.equals(a.offHeap, b.offHeap)
+                && Objects.equals(a.managed, b.managed)
+                && externalEquals(a.external, b.external);
+    }
+
+    /**
+     * 比较两个外部资源 map，null 与空 map 视为等价。
+     */
+    private static boolean externalEquals(Map<String, Double> a, Map<String, Double> b) {
+        if (a == b) {
+            return true;
+        }
+        boolean aEmpty = a == null || a.isEmpty();
+        boolean bEmpty = b == null || b.isEmpty();
+        if (aEmpty && bEmpty) {
+            return true;
+        }
+        if (aEmpty || bEmpty) {
+            return false;
+        }
+        return a.equals(b);
     }
 
     public static OperatorResourceSpec findInStandardSpec(String profile) {

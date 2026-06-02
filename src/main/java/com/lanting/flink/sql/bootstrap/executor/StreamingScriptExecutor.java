@@ -18,9 +18,12 @@
  */
 package com.lanting.flink.sql.bootstrap.executor;
 
+import com.lanting.flink.sql.bootstrap.exception.SqlCompileException;
+import com.lanting.flink.sql.bootstrap.exception.SqlParsePosException;
+import com.lanting.flink.sql.bootstrap.exception.SqlValidateException;
 import com.lanting.flink.sql.bootstrap.flink.ApplicationOperationExecutor;
+import com.lanting.flink.sql.bootstrap.resource.OperatorEntity;
 import com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec;
-import com.lanting.flink.sql.bootstrap.resource.OperatorSpec;
 import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
 import com.lanting.flink.sql.bootstrap.util.JSON;
 
@@ -37,7 +40,6 @@ import org.apache.flink.table.api.internal.TableEnvironmentImpl;
 import org.apache.flink.table.api.internal.TableResultInternal;
 import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.operation.OperationHandle;
-import org.apache.flink.table.gateway.api.utils.SqlGatewayException;
 import org.apache.flink.table.gateway.service.context.SessionContext;
 import org.apache.flink.table.gateway.service.result.ResultFetcher;
 import org.apache.flink.table.operations.ModifyOperation;
@@ -48,7 +50,6 @@ import org.apache.flink.util.StringUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
@@ -82,7 +83,12 @@ import lombok.Setter;
  *       反射调用 {@code TableEnvironmentImpl} 私有方法提交 Pipeline。</li>
  * </ol>
  *
- * <p>当前仅支持 {@code STREAMING} 模式。
+ * <p><b>Executor 是有状态，Executor 与 Script 一一绑定</b>：一个 {@code StreamingScriptExecutor} 实例在构造时
+ * 接收不可变的 {@code script} 参数（{@code final} 字段），实例的整个生命周期内只处理这一个脚本。
+ * {@link #parsedStatements}、{@link #compiledPlan}、{@link #transformations} 等缓存状态
+ * 均围绕此脚本惰性初始化。如需执行不同脚本，必须新建 Executor 实例。
+ *
+ * <p>Executor 非线程安全类。当前仅支持 {@code STREAMING} 模式。
  *
  * @author wangzhao
  * @see ApplicationOperationExecutor
@@ -139,14 +145,18 @@ public class StreamingScriptExecutor {
      * @param printer         SQL执行的输出
      */
     public StreamingScriptExecutor(SessionContext context, String script, String resourceProfile, Printer printer) {
+        if (context == null) {
+            throw new IllegalArgumentException("SessionContext is null.");
+        }
+
+        if (org.apache.commons.lang3.StringUtils.isBlank(script)) {
+            throw new IllegalArgumentException("SQL script is empty.");
+        }
+
         this.context = context;
         this.script = script;
         this.resourceProfile = resourceProfile;
         this.printer = printer;
-    }
-
-    public static StreamingScriptExecutor of(SessionContext context, String script) {
-        return new StreamingScriptExecutor(context, script);
     }
 
     /**
@@ -176,8 +186,11 @@ public class StreamingScriptExecutor {
                 parsedStatements.add(result);
             }
         } catch (Throwable t) {
-            printer.print(t);
-            throw new SqlGatewayException("Failed to execute the script.", t);
+            throw new SqlValidateException("Failed to validate the script. script: " + script, t);
+        }
+
+        if (parsedStatements.isEmpty()) {
+            throw new SqlValidateException("No valid SQL statements found in the script. script: " + script);
         }
 
         return parsedStatements;
@@ -191,12 +204,12 @@ public class StreamingScriptExecutor {
             }
         }
         if (modifyOperationResult.isEmpty()) {
-            throw new SqlGatewayException(
+            throw new SqlCompileException(
                     "No DML statement found in the script. "
                             + "At least one INSERT, EXECUTE STATEMENT SET, or other write operation is required.");
         }
         if (modifyOperationResult.size() > 1) {
-            throw new SqlGatewayException(
+            throw new SqlCompileException(
                     "Multiple DML statements found in the script. Only one INSERT or EXECUTE STATEMENT SET is allowed per execution.");
         }
         Result result = modifyOperationResult.get(0);
@@ -245,7 +258,7 @@ public class StreamingScriptExecutor {
 
     /**
      * 将 {@code resourceSpecStr}（JSON 字符串）解析为匹配规则，遍历 Transformations 并注入资源。
-     * <p>通过 UID 精确匹配（{@link OperatorSpec#getUid()} == {@link Transformation#getUid()}），
+     * <p>通过 UID 精确匹配（{@link OperatorEntity#getUid()} == {@link Transformation#getUid()}），
      * 注入的资源包括：并行度、CPU 核数、Task Heap Memory、Managed Memory、Chain 策略。
      */
     public List<Transformation<?>> injectResourceSpec(List<Transformation<?>> transformations, String resourceSpecStr) {
@@ -261,12 +274,14 @@ public class StreamingScriptExecutor {
                 continue;
             }
 
-            OperatorSpec op = resourceSpec.findByUid(t.getUid());
+            OperatorEntity op = resourceSpec.findByUid(t.getUid());
             if (op == null) {
                 op = resourceSpec.findByName(t.getName());
             }
+            // ResourceSpec 中的 Operator 必须是完整的，必须包含每一个 PhysicalTransformation 节点，不能存在缺失。
+            // 当且仅当所有 Transformations 全部匹配成功后才进行资源的注入，否则抛出异常
             if (op == null) {
-                throw new IllegalArgumentException("Inject operator resource failed: Operation " + t.getUid() + "[" + t.getName() + "]" + " not found.");
+                throw new IllegalArgumentException("Inject operator resource failed: Operation " + t.getUid() + "(name=" + t.getName() + ")" + " not found.");
             }
 
             // 用户指定了稳定 UID 时覆盖 Flink 自动生成的（用于 savepoint 对齐）
@@ -287,6 +302,9 @@ public class StreamingScriptExecutor {
             if (op.getResource() != null) {
                 // 解析 profile → 具体值（如 "small" → 0.25 CPU + 512 MB heap）
                 OperatorResourceSpec r = op.getResource().resolve();
+                if (r.getProfile() != null) {
+                    r.setProfile(OperatorResourceSpec.generateName(r));
+                }
 
                 // 使用 SlotSharingGroup 传递资源，而不是 setResources()。
                 // setResources() 会导致 JobGraph.isPartialResourceConfigured() 检查失败，
@@ -299,20 +317,20 @@ public class StreamingScriptExecutor {
                 // 这样相同资源配置的算子自动归入同一组，operator chain 得以保持。
                 SlotSharingGroup.Builder ssgBuilder =
                         SlotSharingGroup.newBuilder(r.getProfile())
-                                .setCpuCores(r.getCpuCores())
-                                .setTaskHeapMemory(MemorySize.parse(r.getHeapMemory()))
+                                .setCpuCores(r.getCpu())
+                                .setTaskHeapMemory(MemorySize.parse(r.getHeap()))
                                 .setTaskOffHeapMemory(
-                                        r.getOffHeapMemory() != null
-                                                ? MemorySize.parse(r.getOffHeapMemory())
+                                        r.getOffHeap() != null
+                                                ? MemorySize.parse(r.getOffHeap())
                                                 : MemorySize.ZERO)
                                 .setManagedMemory(
-                                        r.getManagedMemory() != null
-                                                ? MemorySize.parse(r.getManagedMemory())
+                                        r.getManaged() != null
+                                                ? MemorySize.parse(r.getManaged())
                                                 : MemorySize.ZERO);
 
                 // Extra Resource
-                if (r.getExternalResources() != null) {
-                    r.getExternalResources().forEach(ssgBuilder::setExternalResource);
+                if (r.getExternal() != null) {
+                    r.getExternal().forEach(ssgBuilder::setExternalResource);
                 }
 
                 t.setSlotSharingGroup(ssgBuilder.build());
@@ -357,27 +375,18 @@ public class StreamingScriptExecutor {
      * 干运行（只 translate，不提交），输出资源配置 JSON。
      *
      * <p>与 {@link #execute()} 使用相同的 validate → transform → injectResourceSpec 路径，
-     * 但不实际提交作业。输出的 JSON 可直接作为 {@link #setResourceProfile(String)} 的输入模板。
-     *
-     * <p><b>必须在独立 JVM 进程中调用</b>，原因同 {@link #execute()}。
+     * 但不实际提交作业。
      */
     public ResourceEntity generateResultSpec() {
         prepare();
 
-        List<Transformation<?>> injected = transformations;
-        if (resourceProfile != null) {
-            injected = injectResourceSpec(transformations, resourceProfile);
-        }
-
-        ResourceEntity resource = resourceProfile != null ? parseResourceSpec(resourceProfile) : null;
-
-        List<OperatorSpec> operators = new ArrayList<>();
-        for (Transformation<?> t : allTransformations(injected)) {
+        List<OperatorEntity> operators = new ArrayList<>();
+        for (Transformation<?> t : allTransformations(transformations)) {
             if (!(t instanceof PhysicalTransformation)) {
                 continue;
             }
 
-            OperatorSpec ors = new OperatorSpec();
+            OperatorEntity ors = new OperatorEntity();
             ors.setUid(t.getUid());
             ors.setName(t.getName());
             ors.setParallelism(t.getParallelism());
@@ -393,9 +402,7 @@ public class StreamingScriptExecutor {
         Collections.reverse(operators);
 
         ResourceEntity root = new ResourceEntity();
-        root.setVersion(resource != null ? resource.getVersion() : 1);
-        root.setDefaultParallelism(
-                resource != null ? resource.getDefaultParallelism() : 0);
+        root.setVersion(1);
         root.setOperators(operators);
 
         return root;
@@ -434,29 +441,7 @@ public class StreamingScriptExecutor {
                 return r;
             }
         }
-        // 回退到 minResources
-        return toOperatorResource(t.getMinResources());
-    }
-
-    /**
-     * 将 Flink 的 {@link org.apache.flink.api.common.operators.ResourceSpec} 转换为 {@link OperatorResourceSpec}。
-     *
-     * @return 如果 ResourceSpec 为 UNKNOWN（未配置），返回 null
-     */
-    private static OperatorResourceSpec toOperatorResource(org.apache.flink.api.common.operators.ResourceSpec spec) {
-        if (spec == null || spec.equals(org.apache.flink.api.common.operators.ResourceSpec.UNKNOWN)) {
-            return null;
-        }
-        return new OperatorResourceSpec(
-                spec.getCpuCores().getValue().doubleValue(),
-                spec.getTaskHeapMemory().toString(),
-                spec.getTaskOffHeapMemory().toString(),
-                spec.getManagedMemory().toString(),
-                spec.getExtendedResources().entrySet().stream()
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                e -> e.getValue().getValue().doubleValue()))
-        );
+        return null;
     }
 
     private ChainingStrategy getChainStrategy(Transformation<?> t) {
@@ -517,8 +502,7 @@ public class StreamingScriptExecutor {
      * 用反射调用 {@link TableEnvironmentImpl} 的私有方法提交 Pipeline。
      */
     private TableResultInternal executeInternal(List<Transformation<?>> transformations, TableEnvironmentImpl tableEnv) throws InvocationTargetException, IllegalAccessException {
-        List<String> sinkNames = Collections.nCopies(transformations.size(), "sink");
-        return (TableResultInternal) EXECUTE_INTERNAL_METHOD.invoke(tableEnv, transformations, sinkNames);
+        return (TableResultInternal) EXECUTE_INTERNAL_METHOD.invoke(tableEnv, transformations, compiledPlan.getSinkIdentifiers());
     }
 
     /**
@@ -797,9 +781,9 @@ public class StreamingScriptExecutor {
             return currentPaddingLineBuilder.length() + 1;
         }
 
-        private SqlError attachPosition(Throwable t) {
+        private SqlParsePosException attachPosition(Throwable t) {
             String message = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
-            return new SqlError(currentLineNumber(), currentColumnNumber(), message, t);
+            return new SqlParsePosException(currentLineNumber(), currentColumnNumber(), message, t);
         }
 
         /**
@@ -812,15 +796,17 @@ public class StreamingScriptExecutor {
             List<Operation> operations =
                     executor.getTableEnvironment().getParser().parse(statement);
             if (operations.size() != 1) {
-                throw new SqlGatewayException(
+                throw new SqlParsePosException(
+                        currentLineNumber(), currentColumnNumber(),
                         "Unsupported SQL query! Only one operation can be parsed.");
             }
 
             Operation op = operations.get(0);
             if (isDMLStatement(op)) {
                 if (hasModifyOperation) {
-                    // 一个 Script 中最多只允许一条 Modify Operator
-                    throw new SqlGatewayException("Unsupported SQL query! Only one modify operation or statement-set operation can be parsed.");
+                    throw new SqlParsePosException(
+                            currentLineNumber(), currentColumnNumber(),
+                            "Unsupported SQL query! Only one modify operation or statement-set operation can be parsed.");
                 }
                 hasModifyOperation = true;
             }

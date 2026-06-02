@@ -47,13 +47,15 @@ import org.apache.flink.table.gateway.service.context.SessionContext;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.Executors;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.*;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -251,18 +253,25 @@ public class SqlEntryPoint {
     /**
      * 将 classpath: 协议的依赖 JAR 解压到临时目录，转为 file: URI。
      * Java 的 URLClassLoader 不识别 classpath scheme，需要提前转换。
+     *
+     * @param dependencies 依赖 URI 列表（可含 classpath: 协议）
+     * @return 全转为 file: 协议的 URI 列表
+     * @throws SecurityException     resourceName 含路径逃逸（如 ".."）时抛出
+     * @throws IOException           临时文件读写失败时抛出
+     * @throws IllegalArgumentException classpath 资源在 classpath 中不存在时抛出
      */
-    private static List<URI> resolveClasspathDependencies(List<URI> dependencies) throws IOException {
+    public static List<URI> resolveClasspathDependencies(List<URI> dependencies) throws IOException {
         File tempDir = new File(System.getProperty("java.io.tmpdir"), "flink-sql-bootstrap-deps");
         tempDir.mkdirs();
         List<URI> resolved = new ArrayList<>();
         for (URI dep : dependencies) {
             if ("classpath".equals(dep.getScheme())) {
                 String resourceName = dep.getSchemeSpecificPart();
-                if (resourceName.contains("..") || resourceName.startsWith("/")) {
+                Path resourcePath = tempDir.toPath().resolve(resourceName).normalize();
+                if (!resourcePath.startsWith(tempDir.toPath())) {
                     throw new SecurityException("Invalid classpath resource path: " + resourceName);
                 }
-                File tempJar = new File(tempDir, resourceName);
+                File tempJar = resourcePath.toFile();
                 try (InputStream is = cl.getResourceAsStream(resourceName)) {
                     if (is == null) {
                         throw new IllegalArgumentException("Classpath resource not found: " + resourceName);
@@ -313,67 +322,71 @@ public class SqlEntryPoint {
      * <p>对每个资源类型（script / catalog / resource），{@code --xxx} 和 {@code --xxx-file}
      * 两组互斥 — 前者直接传值，后者传文件路径或 URI（支持 file://、http://、hdfs:// 等），
      * 通过 {@link #getContent(String)} 统一读取。
+     *
+     * @throws IOException        文件 / HTTP 读取失败时抛出
+     * @throws URISyntaxException path 非合法 URI 时抛出
+     * @throws ParseException     CLI 参数解析失败时抛出
      */
-    static ArgsContent parseOptions(String[] args) {
-        try {
-            DefaultParser parser = new DefaultParser();
-            CommandLine line = parser.parse(getCliOptions(), args);
+    static ArgsContent parseOptions(String[] args) throws IOException, ParseException {
+        DefaultParser parser = new DefaultParser();
+        CommandLine line = parser.parse(getCliOptions(), args);
 
-            // --help
-            if (line.hasOption(OPTION_HELP)) {
-                return ArgsContent.help();
-            }
-
-            String script = getContent(line.getOptionValue(OPTION_SQL_FILE.getLongOpt()));
-            if (script == null) {
-                script = Preconditions.checkNotNull(
-                        line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()),
-                        "Please use \"--script\" or \"--script-file\" to specify script either.");
-            } else {
-                Preconditions.checkArgument(
-                        line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()) == null,
-                        "Don't set \"--script\" or \"--script-file\" together.");
-            }
-
-            String catalog = getContent(line.getOptionValue(OPTION_CATALOG_CONF_FILE.getLongOpt()));
-            if (catalog == null) {
-                catalog = line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt());
-            } else {
-                Preconditions.checkArgument(
-                        line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt()) == null,
-                        "Don't set \"--catalog\" or \"--catalog-file\" together.");
-            }
-
-            String resource = getContent(line.getOptionValue(OPTION_RESOURCE_CONF_FILE.getLongOpt()));
-            if (resource == null) {
-                resource = line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt());
-            } else {
-                Preconditions.checkArgument(
-                        line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt()) == null,
-                        "Don't set \"--resource\" or \"--resource-file\" together.");
-            }
-
-            String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
-
-            boolean isValidate = line.hasOption(OPTION_SCRIPT_VALIDATE.getLongOpt());
-            boolean isCompile = line.hasOption(OPTION_SCRIPT_COMPILE.getLongOpt());
-            boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());
-            if (countTrue(isValidate, isCompile, isInitResource) > 1) {
-                throw new IllegalArgumentException(
-                        "Don't set \"--validate\", \"--compile\", or \"--init-resource\" together.");
-            }
-
-            return new ArgsContent(script, catalog, resource, dependencies, isValidate, isCompile, isInitResource);
-
-        } catch (ParseException | URISyntaxException e) {
-            throw new IllegalArgumentException("Failed to parse args. It should never happens.", e);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Can not read files to execute.", e);
+        // --help
+        if (line.hasOption(OPTION_HELP)) {
+            return ArgsContent.help();
         }
+
+        String script = getContent(line.getOptionValue(OPTION_SQL_FILE.getLongOpt()));
+        if (script == null) {
+            script = Preconditions.checkNotNull(
+                    line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()),
+                    "Please use \"--script\" or \"--script-file\" to specify script either.");
+        } else {
+            Preconditions.checkArgument(
+                    line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()) == null,
+                    "Don't set \"--script\" or \"--script-file\" together.");
+        }
+
+        String catalog = getContent(line.getOptionValue(OPTION_CATALOG_CONF_FILE.getLongOpt()));
+        if (catalog == null) {
+            catalog = line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt());
+        } else {
+            Preconditions.checkArgument(
+                    line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt()) == null,
+                    "Don't set \"--catalog\" or \"--catalog-file\" together.");
+        }
+
+        String resource = getContent(line.getOptionValue(OPTION_RESOURCE_CONF_FILE.getLongOpt()));
+        if (resource == null) {
+            resource = line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt());
+        } else {
+            Preconditions.checkArgument(
+                    line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt()) == null,
+                    "Don't set \"--resource\" or \"--resource-file\" together.");
+        }
+
+        String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
+
+        boolean isValidate = line.hasOption(OPTION_SCRIPT_VALIDATE.getLongOpt());
+        boolean isCompile = line.hasOption(OPTION_SCRIPT_COMPILE.getLongOpt());
+        boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());
+        if (countTrue(isValidate, isCompile, isInitResource) > 1) {
+            throw new IllegalArgumentException(
+                    "Don't set \"--validate\", \"--compile\", or \"--init-resource\" together.");
+        }
+
+        return new ArgsContent(script, catalog, resource, dependencies, isValidate, isCompile, isInitResource);
     }
 
+    /**
+     * 根据路径读取文件内容，支持 file://、http(s)://、classpath: 及无协议（本地文件）四种格式。
+     *
+     * @param filePath 文件路径或 URI 字符串，为 null 时返回 null
+     * @return 文件内容，UTF-8 编码
+     * @throws IOException 文件 / HTTP 读取失败时抛出
+     */
     private static @Nullable String getContent(@Nullable String filePath)
-            throws IOException, URISyntaxException {
+            throws IOException {
         if (filePath == null) {
             return null;
         }
@@ -388,6 +401,13 @@ public class SqlEntryPoint {
         }
     }
 
+    /**
+     * 将路径字符串解析为 URI。无 scheme 的路径自动转为 file: 绝对路径 URI。
+     *
+     * @param path 路径字符串，可为本地相对/绝对路径或带 scheme 的 URI
+     * @return 解析后的 URI
+     * @throws IllegalArgumentException path 非法时抛出（如含非法字符）
+     */
     private static URI resolveURI(String path) {
         final URI uri = URI.create(path);
         if (uri.getScheme() != null) {
@@ -396,7 +416,7 @@ public class SqlEntryPoint {
         return new File(path).getAbsoluteFile().toURI();
     }
 
-    private static String readFromHttp(URI uri) throws IOException {
+    public static String readFromHttp(URI uri) throws IOException {
         URL url = uri.toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
@@ -409,7 +429,7 @@ public class SqlEntryPoint {
         }
     }
 
-    private static String readFileUtf8(URI uri) throws IOException {
+    public static String readFileUtf8(URI uri) throws IOException {
         org.apache.flink.core.fs.Path path = new org.apache.flink.core.fs.Path(uri);
         FileSystem fs = path.getFileSystem();
         try (FSDataInputStream inputStream = fs.open(path)) {
@@ -419,11 +439,15 @@ public class SqlEntryPoint {
         }
     }
 
-    private static String readFromClasspathUtf8(URI uri) throws IOException {
+    public static String readFromClasspathUtf8(URI uri) throws IOException {
         String classpath = uri.getSchemeSpecificPart();
+        String normalized = Paths.get(classpath).normalize().toString();
+        if (normalized.startsWith("..") || normalized.startsWith("/")) {
+            throw new SecurityException("Invalid classpath resource path: " + classpath);
+        }
         InputStream is = cl.getResourceAsStream(classpath);
         if (is == null) {
-            throw new IllegalArgumentException("Classpath resource not found: " + classpath);
+            throw new FileNotFoundException("Classpath resource not found: " + classpath);
         }
         try (is) {
             return IOUtils.toString(is, StandardCharsets.UTF_8);
@@ -487,7 +511,9 @@ public class SqlEntryPoint {
     private static int countTrue(boolean... flags) {
         int count = 0;
         for (boolean f : flags) {
-            if (f) count++;
+            if (f) {
+                count++;
+            }
         }
         return count;
     }

@@ -8,7 +8,7 @@
   "tables": [
     {
       "database": "default",
-      "name": "source_table",
+      "name": "ods_words",
       "comment": "datagen source — 自动生成句子",
       "columns": [
         {
@@ -31,7 +31,7 @@
     },
     {
       "database": "default",
-      "name": "sink_table",
+      "name": "dws_word_count",
       "comment": "print sink — 标准输出",
       "columns": [
         {

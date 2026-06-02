@@ -18,6 +18,7 @@
  */
 package com.lanting.flink.sql.bootstrap.util;
 
+import com.lanting.flink.sql.bootstrap.Utils;
 import com.lanting.flink.sql.bootstrap.executor.StreamingScriptExecutor;
 import com.lanting.flink.sql.bootstrap.flink.UriSafeSessionContext;
 
@@ -32,8 +33,6 @@ import org.apache.flink.table.gateway.service.context.DefaultContext;
 import org.apache.flink.table.gateway.service.context.SessionContext;
 import org.apache.flink.util.concurrent.Executors;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -63,7 +62,7 @@ class PrintUtilsTest {
                 Executors.newDirectExecutorService());
 
         try (AutoCloseable ignored = sessionContext::close) {
-            String script = Files.readString(Paths.get("src/test/resources", scriptPath));
+            String script = Utils.readFromClasspathUtf8(scriptPath);
             StreamingScriptExecutor executor = new StreamingScriptExecutor(sessionContext, script);
             InternalPlan plan = executor.compile(script);
             return executor.transform(plan);
@@ -73,28 +72,28 @@ class PrintUtilsTest {
     @Test
     void case1TwoSourceJoinTwoSink(TestInfo info) throws Exception {
         System.out.println("\n========== " + info.getDisplayName() + " ==========");
-        List<Transformation<?>> transformations = toTransformations("case1_two_source_join_two_sink.sql");
+        List<Transformation<?>> transformations = toTransformations("dag-test-sql/case1_two_source_join_two_sink.sql");
         DAGPrinter.print(transformations);
     }
 
     @Test
     void case2TwoSourceUnion(TestInfo info) throws Exception {
         System.out.println("\n========== " + info.getDisplayName() + " ==========");
-        List<Transformation<?>> transformations = toTransformations("case2_two_source_union.sql");
+        List<Transformation<?>> transformations = toTransformations("dag-test-sql/case2_two_source_union.sql");
         DAGPrinter.print(transformations);
     }
 
     @Test
     void case3ThreeSourceJoinUnionTwoSink(TestInfo info) throws Exception {
         System.out.println("\n========== " + info.getDisplayName() + " ==========");
-        List<Transformation<?>> transformations = toTransformations("case3_three_source_join_union_two_sink.sql");
+        List<Transformation<?>> transformations = toTransformations("dag-test-sql/case3_three_source_join_union_two_sink.sql");
         DAGPrinter.print(transformations);
     }
 
     @Test
     void case4OneSourceOneSink(TestInfo info) throws Exception {
         System.out.println("\n========== " + info.getDisplayName() + " ==========");
-        List<Transformation<?>> transformations = toTransformations("case4_one_source_one_sink.sql");
+        List<Transformation<?>> transformations = toTransformations("dag-test-sql/case4_one_source_one_sink.sql");
         DAGPrinter.print(transformations);
     }
 }

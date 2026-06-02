@@ -40,19 +40,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CatalogEntity {
-
-    public static final CatalogEntity EMPTY;
-
-    static {
-        EMPTY = new CatalogEntity();
-        EMPTY.version = 1;
-        EMPTY.snapshotId = "empty";
-        EMPTY.catalogName = "platform";
-        EMPTY.databaseName = "default";
-        EMPTY.flinkVersion = "unknown";
-    }
-
-
     @JsonProperty("version")
     int version;
     @JsonProperty("snapshotId")
@@ -71,11 +58,4 @@ public class CatalogEntity {
     List<ViewEntity> views;
     @JsonProperty("udfs")
     List<UdfEntity> udfs;
-
-    /**
-     * 空快照 — 当文件不存在或为空时使用。
-     */
-    public static CatalogEntity empty() {
-        return EMPTY;
-    }
 }

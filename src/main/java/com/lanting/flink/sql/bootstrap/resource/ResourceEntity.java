@@ -49,9 +49,9 @@ import lombok.NoArgsConstructor;
  *       "name": "GroupAggregate[4]",
  *       "parallelism": 1,
  *       "resource": {
- *         "cpuCores": 1.0,
- *         "heapMemory": "2048m",
- *         "managedMemory": "256m"
+ *         "cpu": 1.0,
+ *         "heap": "2048m",
+ *         "managed": "256m"
  *       }
  *     }
  *   ]
@@ -71,7 +71,7 @@ public class ResourceEntity {
     private int version;
     /** 全局默认并行度，0 表示不启用。仅当算子未单独配置并行度时生效。 */
     private int defaultParallelism;
-    private List<OperatorSpec> operators;
+    private List<OperatorEntity> operators;
 
     /**
      * 根据 UID 查找对应的算子配置规则。
@@ -79,7 +79,7 @@ public class ResourceEntity {
      * @param uid Transformation UID
      * @return 匹配的 OperatorSpec，未找到返回 null
      */
-    public OperatorSpec findByUid(String uid) {
+    public OperatorEntity findByUid(String uid) {
         if (uid == null || operators == null) {
             return null;
         }
@@ -98,7 +98,7 @@ public class ResourceEntity {
      * @param name Transformation 名称
      * @return 匹配的 OperatorSpec，未找到返回 null
      */
-    public OperatorSpec findByName(String name) {
+    public OperatorEntity findByName(String name) {
         if (name == null || operators == null) {
             return null;
         }

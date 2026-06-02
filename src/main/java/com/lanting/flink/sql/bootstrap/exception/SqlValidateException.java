@@ -16,28 +16,17 @@
  *  limitations under the License.
  *
  */
-package com.lanting.flink.sql.bootstrap;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-
-import org.apache.commons.io.IOUtils;
+package com.lanting.flink.sql.bootstrap.exception;
 
 /**
- * 单元测试所需要的 Utils 方法
- *
  * @author wangzhao
  * @since 2026-06-02
  */
-public class Utils {
-
-    public static String readFromClasspathUtf8(String classpath) {
-        try (InputStream in = Utils.class.getClassLoader().getResourceAsStream(classpath)) {
-            return IOUtils.toString(Objects.requireNonNull(in, classpath), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+public class SqlValidateException extends RuntimeException {
+    public SqlValidateException(String message) {
+        super(message);
+    }
+    public SqlValidateException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

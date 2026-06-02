@@ -16,7 +16,7 @@
  *  limitations under the License.
  *
  */
-package com.lanting.flink.sql.bootstrap.executor;
+package com.lanting.flink.sql.bootstrap.exception;
 
 import lombok.Getter;
 
@@ -27,18 +27,18 @@ import lombok.Getter;
  * 在异常消息中清晰呈现错误位置。
  */
 @Getter
-public class SqlError extends RuntimeException {
+public class SqlParsePosException extends RuntimeException {
 
     private final int lineNumber;
     private final int columnNumber;
 
-    public SqlError(int line, int column, String message) {
+    public SqlParsePosException(int line, int column, String message) {
         super(format(line, column, message));
         this.lineNumber = line;
         this.columnNumber = column;
     }
 
-    public SqlError(int line, int column, String message, Throwable cause) {
+    public SqlParsePosException(int line, int column, String message, Throwable cause) {
         super(format(line, column, message), cause);
         this.lineNumber = line;
         this.columnNumber = column;

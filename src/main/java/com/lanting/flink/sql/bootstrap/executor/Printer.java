@@ -102,6 +102,7 @@ public class Printer {
 
         @Override
         public boolean hasNext() {
+            long backoff = 10L; // 初始等待 10ms
             while (current == null || !current.hasNext()) {
                 if (nextToken == null) {
                     return false;
@@ -113,10 +114,12 @@ public class Printer {
                     return current.hasNext();
                 } else if (resultSet.getResultType() == ResultSet.ResultType.NOT_READY) {
                     try {
-                        Thread.sleep(1);
+                        Thread.sleep(backoff);
                     } catch (InterruptedException e) {
                         throw new SqlGatewayException("Failed to wait job finishes.", e);
                     }
+                    // 指数退避，上限 1s
+                    backoff = Math.min(backoff * 2, 1000L);
                 }
             }
             return true;

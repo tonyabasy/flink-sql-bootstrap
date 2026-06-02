@@ -1,42 +1,55 @@
 {
   "version": 1,
-  "defaultParallelism": 1,
   "operators": [
     {
       "uid": "1_source",
-      "name": "source_table[1]",
+      "name": "ods_words[1]",
       "parallelism": 1,
-      "chainStrategy": "HEAD"
+      "chainStrategy": "HEAD",
+      "resource": {
+        "cpu": 0.25,
+        "heap": "512 MB"
+      }
     },
     {
       "uid": "2_correlate",
       "name": "Correlate[2]",
       "parallelism": 1,
-      "chainStrategy": "ALWAYS"
+      "chainStrategy": "ALWAYS",
+      "resource": {
+        "cpu": 0.25,
+        "heap": "512 MB"
+      }
     },
     {
       "uid": "3_calc",
       "name": "Calc[3]",
       "parallelism": 1,
-      "chainStrategy": "ALWAYS"
+      "chainStrategy": "ALWAYS",
+      "resource": {
+        "cpu": 0.25,
+        "heap": "512 MB"
+      }
     },
     {
-      "uid": "5_group-aggregÏate",
+      "uid": "5_group-aggregate",
       "name": "GroupAggregate[5]",
       "parallelism": -1,
-      "chainStrategy": "ALWAYS"
+      "chainStrategy": "ALWAYS",
+      "resource": {
+        "cpu": 0.25,
+        "heap": "512 MB"
+      }
     },
     {
-      "uid": "6_calc",
-      "name": "Calc[6]",
+      "uid": "6_sink",
+      "name": "dws_word_count[6]",
       "parallelism": -1,
-      "chainStrategy": "ALWAYS"
-    },
-    {
-      "uid": "7_sink",
-      "name": "sink_table[7]",
-      "parallelism": -1,
-      "chainStrategy": "ALWAYS"
+      "chainStrategy": "ALWAYS",
+      "resource": {
+        "cpu": 0.25,
+        "heap": "512 MB"
+      }
     }
   ]
 }

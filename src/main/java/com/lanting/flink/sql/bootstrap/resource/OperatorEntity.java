@@ -33,7 +33,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
-public class OperatorSpec {
+public class OperatorEntity {
     /** 用于匹配 Transformation 的 UID，同时也是稳定 UID 的声明（覆盖 Flink 自动生成的值）。 */
     private String uid;
     /** 仅供人读，不参与匹配。 */

@@ -21,9 +21,13 @@ package com.lanting.flink.sql.bootstrap.executor;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.lanting.flink.sql.bootstrap.Utils;
+import com.lanting.flink.sql.bootstrap.exception.SqlCompileException;
+import com.lanting.flink.sql.bootstrap.exception.SqlValidateException;
 import com.lanting.flink.sql.bootstrap.flink.UriSafeSessionContext;
-import com.lanting.flink.sql.bootstrap.resource.OperatorSpec;
+import com.lanting.flink.sql.bootstrap.resource.OperatorEntity;
+import com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec;
 import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
+import com.lanting.flink.sql.bootstrap.util.JSON;
 
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.configuration.Configuration;
@@ -32,7 +36,6 @@ import org.apache.flink.streaming.api.transformations.PhysicalTransformation;
 import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.session.SessionEnvironment;
 import org.apache.flink.table.gateway.api.session.SessionHandle;
-import org.apache.flink.table.gateway.api.utils.SqlGatewayException;
 import org.apache.flink.table.gateway.rest.util.SqlGatewayRestAPIVersion;
 import org.apache.flink.table.gateway.service.context.DefaultContext;
 import org.apache.flink.table.gateway.service.context.SessionContext;
@@ -55,7 +58,7 @@ class StreamingScriptExecutorTest {
     private SessionContext sessionContext;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         Configuration config = new Configuration();
         StreamExecutionEnvironment env =
                 StreamExecutionEnvironment.getExecutionEnvironment(config);
@@ -70,15 +73,10 @@ class StreamingScriptExecutorTest {
                 Executors.newDirectExecutorService());
     }
 
-    private StreamingScriptExecutor createExecutor(String sqlFile) throws Exception {
-        String script = Utils.readFromClasspathUtf8(sqlFile);
-        return new StreamingScriptExecutor(sessionContext, script);
-    }
-
     @Test
     @DisplayName("compile — 正常 DML：返回 InternalPlan，包含 sink 节点")
-    void compileWithValidDML() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void compileWithValidDML() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -87,25 +85,25 @@ class StreamingScriptExecutorTest {
     }
 
     @Test
-    @DisplayName("compile — 无 DML：抛 SqlGatewayException")
-    void compileWithNoDML() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_no_dml.sql");
-        assertThrows(SqlGatewayException.class,
+    @DisplayName("compile — 无 DML：抛 SqlCompileException")
+    void compileWithNoDML() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_no_dml.sql");
+        assertThrows(SqlCompileException.class,
                 () -> executor.compile(executor.getScript()));
     }
 
     @Test
-    @DisplayName("compile — 多条 DML：抛 SqlGatewayException")
-    void compileWithMultipleDML() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_multi_dml.sql");
-        assertThrows(SqlGatewayException.class,
+    @DisplayName("compile — 多条 DML：抛 SqlValidateException（第二 DML 在 validate 阶段被拦截）")
+    void compileWithMultipleDML() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_multi_dml.sql");
+        assertThrows(SqlValidateException.class,
                 () -> executor.compile(executor.getScript()));
     }
 
     @Test
     @DisplayName("compile — STATEMENT SET：返回 InternalPlan")
-    void compileWithStatementSet() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_statement_set.sql");
+    void compileWithStatementSet() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_statement_set.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -114,8 +112,8 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("compile — DDL + SET + DML 混合脚本")
-    void compileWithMixedScript() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_multi_ddl_dml.sql");
+    void compileWithMixedScript() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_multi_ddl_dml.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -124,25 +122,25 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("compile — 注释和引号内分号不触发切分")
-    void compileWithComments() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_comments.sql");
+    void compileWithComments() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_comments.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
     }
 
     @Test
-    @DisplayName("validate — SQL 语法错误：抛 SqlGatewayException")
-    void validateWithSyntaxError() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_syntax_error.sql");
-        assertThrows(SqlGatewayException.class,
+    @DisplayName("validate — SQL 语法错误：抛 SqlValidateException")
+    void validateWithSyntaxError() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_syntax_error.sql");
+        assertThrows(SqlValidateException.class,
                 () -> executor.validate(executor.getScript()));
     }
 
     @Test
     @DisplayName("transform — 正常 DML 返回非空 Transformation 列表")
-    void transformValidDML() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void transformValidDML() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         InternalPlan plan = executor.compile(executor.getScript());
         List<Transformation<?>> transformations = executor.transform(plan);
 
@@ -150,77 +148,49 @@ class StreamingScriptExecutorTest {
         assertFalse(transformations.isEmpty());
     }
 
-    // ─── helpers ──────────────────────────────────────────────────────────
-
-    private List<Transformation<?>> compileAndTransform(StreamingScriptExecutor executor) {
-        InternalPlan plan = executor.compile(executor.getScript());
-        List<Transformation<?>> transformations = executor.transform(plan);
-        return transformations;
-    }
-
-    private static <T extends Transformation<?>> T firstPhysical(List<Transformation<?>> transformations) {
-        for (Transformation<?> t : transformations) {
-            if (t instanceof PhysicalTransformation) {
-                @SuppressWarnings("unchecked")
-                T casted = (T) t;
-                return casted;
-            }
-        }
-        throw new IllegalStateException("No PhysicalTransformation found");
-    }
-
-    /**
-     * 基于当前 executor 生成一个完整的 resource JSON，所有算子覆盖，
-     * 然后可用于修改特定算子的参数后做 inject。
-     */
-    private String fullResourceJson(StreamingScriptExecutor executor) {
-        ResourceEntity spec = executor.generateResultSpec();
-        return com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec);
-    }
-
     // ─── injectResourceSpec ──────────────────────────────────────────────
 
     @Test
     @DisplayName("injectResourceSpec — UID 精确匹配设置并行度")
-    void injectByUid() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectByUid() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
         String uid = firstPhysical(transformations).getUid();
 
         ResourceEntity spec = executor.generateResultSpec();
-        for (OperatorSpec op : spec.getOperators()) {
+        for (OperatorEntity op : spec.getOperators()) {
             if (uid.equals(op.getUid())) {
                 op.setParallelism(7);
             }
         }
-        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+        executor.injectResourceSpec(transformations, JSON.toJSONString(spec));
 
         assertEquals(7, firstPhysical(transformations).getParallelism());
     }
 
     @Test
     @DisplayName("injectResourceSpec — 名称兜底匹配")
-    void injectByName() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectByName() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
         String name = firstPhysical(transformations).getName();
 
         ResourceEntity spec = executor.generateResultSpec();
-        for (OperatorSpec op : spec.getOperators()) {
+        for (OperatorEntity op : spec.getOperators()) {
             if (name.equals(op.getName())) {
                 op.setUid(null); // 去掉 UID 走名称匹配路径
                 op.setParallelism(5);
             }
         }
-        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+        executor.injectResourceSpec(transformations, JSON.toJSONString(spec));
 
         assertEquals(5, firstPhysical(transformations).getParallelism());
     }
 
     @Test
     @DisplayName("injectResourceSpec — 无匹配 UID 则抛异常")
-    void injectNoMatch() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectNoMatch() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
 
         String json = "{\"version\":1,\"operators\":[{\"uid\":\"nonexistent\",\"parallelism\":99}]}";
@@ -230,21 +200,21 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("injectResourceSpec — 资源注入 (CPU + Heap Memory)")
-    void injectResource() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectResource() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
         String uid = firstPhysical(transformations).getUid();
 
         ResourceEntity spec = executor.generateResultSpec();
-        for (OperatorSpec op : spec.getOperators()) {
+        for (OperatorEntity op : spec.getOperators()) {
             if (uid.equals(op.getUid())) {
                 com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec res =
                         new com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec(
-                                Double.valueOf(1.5), "2048 MB", null, null, Collections.emptyMap());
+                                1.5, "2048 MB", null, null, Collections.emptyMap());
                 op.setResource(res);
             }
         }
-        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+        executor.injectResourceSpec(transformations, JSON.toJSONString(spec));
 
         assertTrue(firstPhysical(transformations).getSlotSharingGroup().isPresent());
         assertEquals(1.5,
@@ -253,18 +223,18 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("injectResourceSpec — profile 预置规格解析")
-    void injectProfile() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectProfile() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
         String uid = firstPhysical(transformations).getUid();
 
         ResourceEntity spec = executor.generateResultSpec();
-        for (OperatorSpec op : spec.getOperators()) {
+        for (OperatorEntity op : spec.getOperators()) {
             if (uid.equals(op.getUid())) {
-                op.setResource(com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec.SMALL);
+                op.setResource(OperatorResourceSpec.SMALL);
             }
         }
-        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+        executor.injectResourceSpec(transformations, JSON.toJSONString(spec));
 
         assertTrue(firstPhysical(transformations).getSlotSharingGroup().isPresent());
         assertEquals(0.25,
@@ -273,24 +243,41 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("injectResourceSpec — Chain 策略注入")
-    void injectChainStrategy() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectChainStrategy() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
         String uid = firstPhysical(transformations).getUid();
 
         ResourceEntity spec = executor.generateResultSpec();
-        for (OperatorSpec op : spec.getOperators()) {
+        for (OperatorEntity op : spec.getOperators()) {
             if (uid.equals(op.getUid())) {
                 op.setChainStrategy("HEAD");
             }
         }
-        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+        executor.injectResourceSpec(transformations, JSON.toJSONString(spec));
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — 非法 Chain 策略抛异常")
+    void injectInvalidChainStrategy() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        String uid = firstPhysical(transformations).getUid();
+
+        ResourceEntity spec = executor.generateResultSpec();
+        for (OperatorEntity op : spec.getOperators()) {
+            if (uid.equals(op.getUid())) {
+                op.setChainStrategy("END");
+            }
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.injectResourceSpec(transformations, JSON.toJSONString(spec)));
     }
 
     @Test
     @DisplayName("injectResourceSpec — 空字符串跳过注入")
-    void injectEmptyResource() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectEmptyResource() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
         ResourceEntity spec = executor.generateResultSpec();
         int count = spec.getOperators().size();
@@ -303,8 +290,8 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("injectResourceSpec — 非法 JSON 抛异常")
-    void injectBadJson() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void injectBadJson() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         List<Transformation<?>> transformations = compileAndTransform(executor);
 
         assertThrows(RuntimeException.class,
@@ -315,8 +302,8 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("generateResultSpec — 输出合法结构")
-    void generateSpecStructure() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void generateSpecStructure() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         ResourceEntity spec = executor.generateResultSpec();
 
         assertTrue(spec.getVersion() > 0);
@@ -326,11 +313,11 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("generateResultSpec — UID 与 Transformation 一致")
-    void generateSpecUids() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void generateSpecUids() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         ResourceEntity spec = executor.generateResultSpec();
 
-        for (OperatorSpec op : spec.getOperators()) {
+        for (OperatorEntity op : spec.getOperators()) {
             assertNotNull(op.getUid(), "UID must not be null for " + op.getName());
             assertNotNull(op.getName(), "Name must not be null for " + op.getUid());
         }
@@ -338,8 +325,8 @@ class StreamingScriptExecutorTest {
 
     @Test
     @DisplayName("generateResultSpec — 只包含 PhysicalTransformation")
-    void generateSpecOnlyPhysical() throws Exception {
-        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+    void generateSpecOnlyPhysical() {
+        StreamingScriptExecutor executor = createExecutor("executor-test-sql/test_simple_dml.sql");
         ResourceEntity spec = executor.generateResultSpec();
         List<Transformation<?>> all = executor.allTransformations(executor.getTransformations());
 
@@ -348,4 +335,27 @@ class StreamingScriptExecutorTest {
         assertEquals(physicalCount, spec.getOperators().size());
     }
 
+
+    // ─── helpers ──────────────────────────────────────────────────────────
+
+    private StreamingScriptExecutor createExecutor(String sqlFile) {
+        String script = Utils.readFromClasspathUtf8(sqlFile);
+        return new StreamingScriptExecutor(sessionContext, script);
+    }
+
+    private List<Transformation<?>> compileAndTransform(StreamingScriptExecutor executor) {
+        InternalPlan plan = executor.compile(executor.getScript());
+        return executor.transform(plan);
+    }
+
+    private static <T extends Transformation<?>> T firstPhysical(List<Transformation<?>> transformations) {
+        for (Transformation<?> t : transformations) {
+            if (t instanceof PhysicalTransformation) {
+                @SuppressWarnings("unchecked")
+                T casted = (T) t;
+                return casted;
+            }
+        }
+        throw new IllegalStateException("No PhysicalTransformation found");
+    }
 }
