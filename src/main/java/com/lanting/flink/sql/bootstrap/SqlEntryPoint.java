@@ -164,6 +164,13 @@ public class SqlEntryPoint {
                     .desc("Parse, validate and compile the SQL script without submitting any job. Recommend use 'local' target.")
                     .build();
 
+    public static final Option OPTION_SCRIPT_VALIDATE =
+            Option.builder()
+                    .longOpt("validate")
+                    .numberOfArgs(0)
+                    .desc("Parse and validate the SQL script syntax without compiling. Recommend use 'local' target.")
+                    .build();
+
     public static final Option OPTION_INIT_RESOURCE =
             Option.builder()
                     .longOpt("init-resource")
@@ -220,8 +227,12 @@ public class SqlEntryPoint {
                     sessionContext, argsContent.script, argsContent.resource,
                     new Printer(System.out));
 
-            if (argsContent.isCompile) {
-                // 仅校验，不执行
+            if (argsContent.isValidate) {
+                // 仅校验 SQL 语法，不编译不执行
+                executor.validate(argsContent.script);
+                println("Validate the SQL script successfully.");
+            } else if (argsContent.isCompile) {
+                // 校验 + 编译，不执行
                 InternalPlan compiledPlan = executor.compile(argsContent.script);
                 println("\n" + compiledPlan.asJsonString() + "\n");
                 println("Compile the SQL script successfully!");
@@ -292,6 +303,7 @@ public class SqlEntryPoint {
         options.addOption(OPTION_DEPENDENCIES);
         options.addOption(OPTION_INIT_RESOURCE);
         options.addOption(OPTION_SCRIPT_COMPILE);
+        options.addOption(OPTION_SCRIPT_VALIDATE);
         return options;
     }
 
@@ -343,13 +355,15 @@ public class SqlEntryPoint {
 
             String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
 
+            boolean isValidate = line.hasOption(OPTION_SCRIPT_VALIDATE.getLongOpt());
             boolean isCompile = line.hasOption(OPTION_SCRIPT_COMPILE.getLongOpt());
             boolean isInitResource = line.hasOption(OPTION_INIT_RESOURCE.getLongOpt());
-            if (isCompile && isInitResource) {
-                throw new IllegalArgumentException("Don't set \"--compile\" or \"--init-resource\" together.");
+            if (countTrue(isValidate, isCompile, isInitResource) > 1) {
+                throw new IllegalArgumentException(
+                        "Don't set \"--validate\", \"--compile\", or \"--init-resource\" together.");
             }
 
-            return new ArgsContent(script, catalog, resource, dependencies, isCompile, isInitResource);
+            return new ArgsContent(script, catalog, resource, dependencies, isValidate, isCompile, isInitResource);
 
         } catch (ParseException | URISyntaxException e) {
             throw new IllegalArgumentException("Failed to parse args. It should never happens.", e);
@@ -437,6 +451,7 @@ public class SqlEntryPoint {
         final List<URI> dependencies;
 
         boolean isHelp;
+        boolean isValidate;
         boolean isCompile;
         boolean isInitResource;
 
@@ -447,11 +462,13 @@ public class SqlEntryPoint {
             this.dependencies = null;
         }
 
-        ArgsContent(String script, String catalog, String resource, String[] dependencies, boolean isCompile, boolean isInitResource) {
+        ArgsContent(String script, String catalog, String resource, String[] dependencies,
+                    boolean isValidate, boolean isCompile, boolean isInitResource) {
             this.script = script;
             this.catalog = catalog;
             this.resource = resource;
             this.dependencies = toURIs(dependencies);
+            this.isValidate = isValidate;
             this.isCompile = isCompile;
             this.isInitResource = isInitResource;
         }
@@ -461,6 +478,14 @@ public class SqlEntryPoint {
             obj.isHelp = true;
             return obj;
         }
+    }
+
+    private static int countTrue(boolean... flags) {
+        int count = 0;
+        for (boolean f : flags) {
+            if (f) count++;
+        }
+        return count;
     }
 
     static List<URI> toURIs(String[] deps) {

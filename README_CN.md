@@ -28,7 +28,7 @@ Flink SQL Bootstrap 正是为解决这三个问题而生。
 | 依赖 | 版本 |
 |------|------|
 | Java | 11+ |
-| Flink | 2.2.0 |
+| Flink | 1.20.x / 2.2.0 |
 
 
 ### 启动方式
@@ -37,12 +37,23 @@ Flink SQL Bootstrap 正是为解决这三个问题而生。
 # 编译
 mvn package -DskipTests
 
-# 提交
-flink run target/flink-sql-bootstrap.jar \
-    --script-file /path/to/job.sql \
-    --catalog-file /path/to/catalog.json \
-    --resource-file /path/to/resource.json \
-    --dependency /path/to/udf.jar
+# 提交（使用所有选项）
+$FLINK_HOME/bin/flink run \
+    --target local \
+    -Dpipeline.name="My First SQL Job" \
+    /path/to/flink-sql-bootstrap.jar \
+    --script-file classpath:example-word-count.sql \
+    --resource-file classpath:example-resource.json \
+    --catalog-file classpath:example-catalog.json \
+    --dependency classpath:example-udf-reverse.jar \
+    --dependency classpath:example-udf-substring.jar
+
+# 所有文件参数支持以下协议：
+#   classpath:  - 从应用 JAR 资源中读取
+#   http(s)://  - 从远程 HTTP 服务器获取
+#   /path/to    - 从本地文件系统读取
+#   hdfs://     - 通过 Flink FileSystem 从 HDFS 或其他 DFS 读取
+#   s3://       - 通过 Flink FileSystem 从 S3 读取
 ```
 
 ## 如何贡献
