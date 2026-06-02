@@ -85,15 +85,40 @@ $FLINK_HOME/bin/flink run \
     --script-file classpath:example-word-count.sql
 ```
 
-Where `example-word-count.sql` contains:
+Where `example-word-count.sql` contains **DDL + DML** with zero external dependencies:
 
 ```sql
--- datagen source → split words → group count → print sink
-INSERT INTO dws_word_count
-SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
-FROM ods_words
+-- datagen auto-generates sentences → split words → count → print output
+CREATE TEMPORARY TABLE source_table (
+  sentence STRING
+) WITH (
+  'connector' = 'datagen',
+  'rows-per-second' = '1'
+);
+
+CREATE TEMPORARY TABLE sink_table (
+  word STRING,
+  cnt BIGINT
+) WITH (
+  'connector' = 'print'
+);
+
+INSERT INTO sink_table
+SELECT word, COUNT(*) AS cnt
+FROM source_table
 CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
-GROUP BY my_reverse(my_substring(word, 0, 2));
+GROUP BY word;
+```
+
+After submission, you'll see output similar to:
+
+```
+Flink SQL> INSERT INTO sink_table
+           SELECT word, COUNT(*) AS cnt ...
+> +I[hello, 1]
+> +I[world, 1]
+> +I[flink, 3]
+> +I[sql, 2]
 ```
 
 ### Step 2 — Generate & Inject Resource Config
@@ -133,17 +158,27 @@ $FLINK_HOME/bin/flink run \
 
 ### Step 3 — Deploy with Catalog Snapshot
 
-Pre-register tables and UDFs via a Catalog snapshot so the SQL script contains **zero DDL**:
+Pre-register tables and UDFs via a Catalog snapshot so the SQL script contains **zero DDL**. Use the companion SQL script designed for this:
 
 ```bash
 $FLINK_HOME/bin/flink run \
     --target local \
     /path/to/flink-sql-bootstrap.jar \
-    --script-file classpath:example-word-count.sql \
+    --script-file classpath:example-word-count-advanced.sql \
     --catalog-file classpath:example-catalog.json \
     --resource-file classpath:example-resource.json \
     --dependency classpath:example-udf-reverse.jar \
     --dependency classpath:example-udf-substring.jar
+```
+
+Where `example-word-count-advanced.sql` contains only DML (tables and UDFs are pre-registered by the Catalog snapshot):
+
+```sql
+INSERT INTO dws_word_count
+SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
+FROM ods_words
+CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
+GROUP BY my_reverse(my_substring(word, 0, 2));
 ```
 
 ---

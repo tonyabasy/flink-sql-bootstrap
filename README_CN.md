@@ -85,15 +85,40 @@ $FLINK_HOME/bin/flink run \
     --script-file classpath:example-word-count.sql
 ```
 
-其中 `example-word-count.sql` 的内容：
+其中 `example-word-count.sql` 包含 **DDL + DML**，无需任何外部依赖：
 
 ```sql
--- datagen 生成句子 → 分词 → 分组计数 → print 输出
-INSERT INTO dws_word_count
-SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
-FROM ods_words
+-- datagen 自动生成句子 → 分词 → 分组计数 → print 输出
+CREATE TEMPORARY TABLE source_table (
+  sentence STRING
+) WITH (
+  'connector' = 'datagen',
+  'rows-per-second' = '1'
+);
+
+CREATE TEMPORARY TABLE sink_table (
+  word STRING,
+  cnt BIGINT
+) WITH (
+  'connector' = 'print'
+);
+
+INSERT INTO sink_table
+SELECT word, COUNT(*) AS cnt
+FROM source_table
 CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
-GROUP BY my_reverse(my_substring(word, 0, 2));
+GROUP BY word;
+```
+
+执行后将在控制台看到类似输出：
+
+```
+Flink SQL> INSERT INTO sink_table
+           SELECT word, COUNT(*) AS cnt ...
+> +I[hello, 1]
+> +I[world, 1]
+> +I[flink, 3]
+> +I[sql, 2]
 ```
 
 ### Step 2 — 生成并注入资源配置
@@ -133,17 +158,27 @@ $FLINK_HOME/bin/flink run \
 
 ### Step 3 — 带 Catalog 快照部署
 
-通过 Catalog 快照预注册表和 UDF，使 SQL 脚本中 **不写任何 DDL**：
+通过 Catalog 快照预注册表和 UDF，使 SQL 脚本中 **不写任何 DDL**。需要配合专门的 SQL 脚本使用：
 
 ```bash
 $FLINK_HOME/bin/flink run \
     --target local \
     /path/to/flink-sql-bootstrap.jar \
-    --script-file classpath:example-word-count.sql \
+    --script-file classpath:example-word-count-advanced.sql \
     --catalog-file classpath:example-catalog.json \
     --resource-file classpath:example-resource.json \
     --dependency classpath:example-udf-reverse.jar \
     --dependency classpath:example-udf-substring.jar
+```
+
+其中 `example-word-count-advanced.sql` 只包含 DML（表和 UDF 已由 Catalog 快照预注册）：
+
+```sql
+INSERT INTO dws_word_count
+SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
+FROM ods_words
+CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
+GROUP BY my_reverse(my_substring(word, 0, 2));
 ```
 
 ---

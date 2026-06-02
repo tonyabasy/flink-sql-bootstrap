@@ -1,6 +1,22 @@
--- 最简单的 Word Count：datagen 生成句子 → 按单词 split → 分组计数 → print
-INSERT INTO dws_word_count
-SELECT my_reverse(my_substring(word,0,2)) as word, COUNT(*) AS cnt
-FROM ods_words
+-- datagen 自动生成句子 → 分词 → 分组计数 → print 输出
+-- 本脚本自包含，无需外部 Catalog、资源或 UDF 依赖
+
+CREATE TEMPORARY TABLE source_table (
+  sentence STRING
+) WITH (
+  'connector' = 'datagen',
+  'rows-per-second' = '1'
+);
+
+CREATE TEMPORARY TABLE sink_table (
+  word STRING,
+  cnt BIGINT
+) WITH (
+  'connector' = 'print'
+);
+
+INSERT INTO sink_table
+SELECT word, COUNT(*) AS cnt
+FROM source_table
 CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
-GROUP BY my_reverse(my_substring(word,0,2));
+GROUP BY word;
