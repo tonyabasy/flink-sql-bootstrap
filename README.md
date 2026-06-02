@@ -33,6 +33,7 @@
 - [Architecture](#architecture)
 - [Capability Boundaries](#capability-boundaries)
 - [Contributing](#contributing)
+- [Documentation](#documentation)
 - [License](#license)
 
 ---
@@ -382,11 +383,19 @@ Key design decisions:
 
 ## Contributing
 
-Contributions are welcome! Areas where help is especially appreciated:
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
-- More comprehensive unit tests and integration tests.
-- Documentation and use-case examples.
-- Bug reports and feature requests — please open an issue with a minimal reproduction.
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guide — setup, coding style, PR workflow |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
+| [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability boundaries — what this project is and is not |
+| [CONTEXT.md](CONTEXT.md) | Domain glossary and terminology |
+| [docs/agents/](docs/agents/) | AI Agent collaboration guidelines |
 
 ---
 
