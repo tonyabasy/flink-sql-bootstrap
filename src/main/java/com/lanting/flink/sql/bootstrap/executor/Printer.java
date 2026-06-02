@@ -75,6 +75,8 @@ public class Printer {
 
     public void print(ResultFetcher result) {
         getPrintStyle(result.getResultSchema()).print(new RowDataIterator(result), writer);
+        // 结果最后增加空行，方便阅读
+        writer.println();
     }
 
     public static TableauStyle getPrintStyle(ResolvedSchema schema) {

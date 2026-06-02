@@ -20,6 +20,7 @@ package com.lanting.flink.sql.bootstrap.executor;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.lanting.flink.sql.bootstrap.Utils;
 import com.lanting.flink.sql.bootstrap.flink.UriSafeSessionContext;
 
 import org.apache.flink.api.dag.Transformation;
@@ -34,8 +35,6 @@ import org.apache.flink.table.gateway.service.context.DefaultContext;
 import org.apache.flink.table.gateway.service.context.SessionContext;
 import org.apache.flink.util.concurrent.Executors;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -49,8 +48,6 @@ import org.junit.jupiter.api.Test;
  * 覆盖 compile、transform、injectResourceSpec、generateResultSpec 及异常路径。
  */
 class StreamingScriptExecutorTest {
-
-    private static final String SQL_DIR = "src/test/resources/sql/";
 
     private SessionContext sessionContext;
 
@@ -70,15 +67,15 @@ class StreamingScriptExecutorTest {
                 Executors.newDirectExecutorService());
     }
 
-    private StreamingScriptExecutor newExecutor(String sqlFile) throws Exception {
-        String script = Files.readString(Paths.get(SQL_DIR, sqlFile));
+    private StreamingScriptExecutor createExecutor(String sqlFile) throws Exception {
+        String script = Utils.readFromClasspathUtf8(sqlFile);
         return new StreamingScriptExecutor(sessionContext, script);
     }
 
     @Test
     @DisplayName("compile — 正常 DML：返回 InternalPlan，包含 sink 节点")
     void compileWithValidDML() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_simple_dml.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -89,7 +86,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("compile — 无 DML：抛 SqlGatewayException")
     void compileWithNoDML() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_no_dml.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_no_dml.sql");
         assertThrows(SqlGatewayException.class,
                 () -> executor.compile(executor.getScript()));
     }
@@ -97,7 +94,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("compile — 多条 DML：抛 SqlGatewayException")
     void compileWithMultipleDML() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_multi_dml.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_multi_dml.sql");
         assertThrows(SqlGatewayException.class,
                 () -> executor.compile(executor.getScript()));
     }
@@ -105,7 +102,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("compile — STATEMENT SET：返回 InternalPlan")
     void compileWithStatementSet() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_statement_set.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_statement_set.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -115,7 +112,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("compile — DDL + SET + DML 混合脚本")
     void compileWithMixedScript() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_multi_ddl_dml.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_multi_ddl_dml.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -125,7 +122,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("compile — 注释和引号内分号不触发切分")
     void compileWithComments() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_comments.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_comments.sql");
         InternalPlan plan = executor.compile(executor.getScript());
 
         assertNotNull(plan);
@@ -134,7 +131,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("validate — SQL 语法错误：抛 SqlGatewayException")
     void validateWithSyntaxError() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_syntax_error.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_syntax_error.sql");
         assertThrows(SqlGatewayException.class,
                 () -> executor.validate(executor.getScript()));
     }
@@ -142,7 +139,7 @@ class StreamingScriptExecutorTest {
     @Test
     @DisplayName("transform — 正常 DML 返回非空 Transformation 列表")
     void transformValidDML() throws Exception {
-        StreamingScriptExecutor executor = newExecutor("test_simple_dml.sql");
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
         InternalPlan plan = executor.compile(executor.getScript());
         List<Transformation<?>> transformations = executor.transform(plan);
 

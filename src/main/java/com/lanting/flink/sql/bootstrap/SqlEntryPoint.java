@@ -421,7 +421,11 @@ public class SqlEntryPoint {
 
     private static String readFromClasspathUtf8(URI uri) throws IOException {
         String classpath = uri.getSchemeSpecificPart();
-        try (InputStream is = Objects.requireNonNull(cl.getResourceAsStream(classpath), classpath)) {
+        InputStream is = cl.getResourceAsStream(classpath);
+        if (is == null) {
+            throw new IllegalArgumentException("Classpath resource not found: " + classpath);
+        }
+        try (is) {
             return IOUtils.toString(is, StandardCharsets.UTF_8);
         }
     }

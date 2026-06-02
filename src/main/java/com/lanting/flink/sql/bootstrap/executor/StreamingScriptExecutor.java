@@ -32,6 +32,7 @@ import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.streaming.api.transformations.PhysicalTransformation;
 import org.apache.flink.table.api.SqlParserEOFException;
+import org.apache.flink.table.api.SqlParserException;
 import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.internal.TableEnvironmentImpl;
 import org.apache.flink.table.api.internal.TableResultInternal;
@@ -646,7 +647,7 @@ public class StreamingScriptExecutor {
                                     continue;
                                 }
                             } catch (Throwable t) {
-                                throwable = t;
+                                throwable = attachLineNumber(previousPaddingSqlBuilder, t);
                             }
 
                             hasNext = true;
@@ -781,6 +782,31 @@ public class StreamingScriptExecutor {
                 }
             }
             return script.length() - 1;
+        }
+
+        /**
+         * 根据 padding 信息计算当前解析位置的原始行号。
+         */
+        private int currentLineNumber() {
+            int lines = 1;
+            for (int i = 0; i < previousPaddingSqlBuilder.length(); i++) {
+                if (previousPaddingSqlBuilder.charAt(i) == '\n') {
+                    lines++;
+                }
+            }
+            return lines;
+        }
+
+        /**
+         * 将 SQL 解析错误的行号信息附加到异常消息中。
+         */
+        private Throwable attachLineNumber(StringBuilder padding, Throwable t) {
+            int line = currentLineNumber();
+            String message = String.format("(line %d) %s", line, t.getMessage());
+            if (t instanceof SqlParserException) {
+                return new SqlParserException(message, t);
+            }
+            return new SqlGatewayException(message, t);
         }
 
         /**
