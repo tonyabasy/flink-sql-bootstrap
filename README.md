@@ -3,23 +3,61 @@
   <a href="README_CN.md">中文</a>
 </p>
 
-# Flink SQL Bootstrap
+<h1 align="center">Flink SQL Bootstrap</h1>
 
-A production-grade enhanced launcher for Flink SQL Application Template, delivering three core capabilities: custom Catalog snapshots, Multi-Statement SQL Script deployment, and fine-grained resource tuning.
+<p align="center">
+  A production-grade enhanced launcher for Flink SQL jobs — custom Catalog snapshots, Multi-Statement SQL Script deployment, and fine-grained per-operator resource tuning.
+</p>
 
-## Problems It Solves
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/Java-11%2B-orange" alt="Java">
+  <img src="https://img.shields.io/badge/Flink-1.20%2B-brightgreen" alt="Flink">
+</p>
 
-Three pain points in native Flink SQL:
+---
 
-1. **Catalog is not reusable** — DDL is tightly coupled with the job; tables must be rebuilt on every submission, with no way to integrate external metadata.
-2. **No Multi-Statement SQL Script support** — SQL statements can only be executed one at a time; there is no way to orchestrate, validate, and submit multiple statements as a single unit.
-3. **No fine-grained resource tuning** — Fine-grained resource tuning offers enormous potential for resource optimization, but is not supported by official Flink SQL.
+## Table of Contents
 
-Flink SQL Bootstrap is built specifically to address these three problems.
+- [Why Flink SQL Bootstrap](#why-flink-sql-bootstrap)
+- [Core Capabilities](#core-capabilities)
+- [Quick Start](#quick-start)
+  - [Requirements](#requirements)
+  - [Step 1 — Run a SQL Script](#step-1--run-a-sql-script)
+  - [Step 2 — Generate & Inject Resource Config](#step-2--generate--inject-resource-config)
+  - [Step 3 — Deploy with Catalog Snapshot](#step-3--deploy-with-catalog-snapshot)
+- [Execution Modes](#execution-modes)
+- [Configuration Reference](#configuration-reference)
+  - [Resource Hint JSON](#resource-hint-json)
+  - [Catalog Snapshot JSON](#catalog-snapshot-json)
+- [Architecture](#architecture)
+- [Capability Boundaries](#capability-boundaries)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Capability Boundaries
+---
 
-See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
+## Why Flink SQL Bootstrap
+
+Native Flink SQL has three pain points in production:
+
+| Pain Point | Native Flink SQL | Flink SQL Bootstrap |
+|-----------|------------------|---------------------|
+| **Catalog Reusability** | DDL is tightly coupled with the job; tables must be rebuilt on every submission. | Deploy with a **Catalog snapshot JSON** — tables, views, and UDFs are pre-registered, no DDL needed at runtime. |
+| **Multi-Statement Script** | Only single-statement submission is supported natively. | Full **Multi-Statement SQL Script** support — DDLs execute immediately, DMLs are compiled, optimized, and submitted as a single pipeline. |
+| **Fine-Grained Resource Tuning** | Only TM/JM-level coarse-grained configuration (memory, slots). | **Per-operator resource injection** — CPU, heap memory, managed memory, parallelism, and chaining strategy for each operator. |
+
+---
+
+## Core Capabilities
+
+1. **Custom Catalog Snapshots** — Serialize your tables, views, and UDFs into a JSON file. The job starts with a fully prepared catalog, eliminating the need for DDL statements in the SQL script.
+2. **Multi-Statement SQL Script** — Write `CREATE TABLE`, `SET`, `INSERT`, and `CALL` statements in a single `.sql` file. The launcher splits, validates, and orchestrates execution automatically.
+3. **Fine-Grained Resource Tuning** — Generate a resource template via `--init-resource`, tune parallelism and resources per operator, and inject them into the Flink DAG before job submission.
+4. **Universal Protocol Support** — Load SQL scripts and configs from `classpath:`, `file://`, `http(s)://`, `hdfs://`, or `s3://`.
+5. **Flink 1.20+ Compatible** — Works with Flink 1.20 and later without modifying the Flink engine or Planner.
+
+---
 
 ## Quick Start
 
@@ -28,33 +66,262 @@ See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
 | Dependency | Version |
 |------------|---------|
 | Java | 11+ |
-| Flink | 1.20.x / 2.2.0 |
+| Flink | 1.20+ |
 
-### Submitting a Job
+### Build
 
 ```bash
-# Build
 mvn package -DskipTests
+```
 
-# Submit with all options
+### Step 1 — Run a SQL Script
+
+The simplest way — just submit a SQL script:
+
+```bash
 $FLINK_HOME/bin/flink run \
     --target local \
-    -Dpipeline.name="My First SQL Job" \
+    /path/to/flink-sql-bootstrap.jar \
+    --script-file classpath:example-word-count.sql
+```
+
+Where `example-word-count.sql` contains:
+
+```sql
+-- datagen source → split words → group count → print sink
+INSERT INTO dws_word_count
+SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
+FROM ods_words
+CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
+GROUP BY my_reverse(my_substring(word, 0, 2));
+```
+
+### Step 2 — Generate & Inject Resource Config
+
+Generate a resource template from the SQL script:
+
+```bash
+$FLINK_HOME/bin/flink run \
+    --target local \
     /path/to/flink-sql-bootstrap.jar \
     --script-file classpath:example-word-count.sql \
-    --resource-file classpath:example-resource.json \
+    --init-resource
+```
+
+Output (excerpt):
+
+```json
+{
+  "version": 1,
+  "operators": [
+    { "uid": "1_source", "name": "ods_words[1]", "parallelism": 1, "resource": { "cpu": 0.25, "heap": "512 MB" } },
+    { "uid": "5_group-aggregate", "name": "GroupAggregate[5]", "parallelism": -1, "resource": { "cpu": 0.25, "heap": "512 MB" } },
+    { "uid": "6_sink", "name": "dws_word_count[6]", "parallelism": -1, "resource": { "cpu": 0.25, "heap": "512 MB" } }
+  ]
+}
+```
+
+Save the output as `resource.json`, tune the values, and submit with resources:
+
+```bash
+$FLINK_HOME/bin/flink run \
+    --target local \
+    /path/to/flink-sql-bootstrap.jar \
+    --script-file classpath:example-word-count.sql \
+    --resource-file classpath:resource.json
+```
+
+### Step 3 — Deploy with Catalog Snapshot
+
+Pre-register tables and UDFs via a Catalog snapshot so the SQL script contains **zero DDL**:
+
+```bash
+$FLINK_HOME/bin/flink run \
+    --target local \
+    /path/to/flink-sql-bootstrap.jar \
+    --script-file classpath:example-word-count.sql \
     --catalog-file classpath:example-catalog.json \
+    --resource-file classpath:example-resource.json \
     --dependency classpath:example-udf-reverse.jar \
     --dependency classpath:example-udf-substring.jar
-
-# All file parameters support the following protocols:
-#   classpath:  - read from application JAR resources
-#   http(s)://  - fetch from remote HTTP server
-#   /path/to    - read from local file system
-#   hdfs://     - read from HDFS or other DFS via Flink FileSystem
-#   s3://       - read from S3 via Flink FileSystem
 ```
+
+---
+
+## Execution Modes
+
+Besides full execution, three dry-run modes are provided for CI/CD and development workflows:
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| **Validate** | `--validate` | Parse and validate SQL syntax without compiling or executing. |
+| **Compile** | `--compile` | Parse, validate, and compile the SQL script. Outputs the optimized plan as JSON. |
+| **Init Resource** | `--init-resource` | Translate the SQL plan and output a resource configuration template for tuning. |
+
+```bash
+# Validate SQL syntax
+$FLINK_HOME/bin/flink run ... --script-file job.sql --validate
+
+# Compile and inspect the execution plan
+$FLINK_HOME/bin/flink run ... --script-file job.sql --compile
+
+# Generate resource template
+$FLINK_HOME/bin/flink run ... --script-file job.sql --init-resource
+```
+
+---
+
+## Configuration Reference
+
+### Resource Hint JSON
+
+Describes per-operator resources. Each operator is matched by `uid` (preferred) or `name`.
+
+```json
+{
+  "version": 1,
+  "defaultParallelism": 2,
+  "operators": [
+    {
+      "uid": "1_source",
+      "name": "ods_words[1]",
+      "parallelism": 1,
+      "chainStrategy": "HEAD",
+      "resource": {
+        "profile": "small"
+      }
+    },
+    {
+      "uid": "5_group-aggregate",
+      "name": "GroupAggregate[5]",
+      "parallelism": 4,
+      "chainStrategy": "ALWAYS",
+      "resource": {
+        "cpu": 1.0,
+        "heap": "2048m",
+        "managed": "256m"
+      }
+    }
+  ]
+}
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | int | Schema version, currently `1`. |
+| `defaultParallelism` | int | Global default parallelism. `0` means no override. |
+| `operators` | array | List of operator configurations. |
+| `operators[].uid` | string | Stable UID for matching. Overrides Flink auto-generated UIDs. |
+| `operators[].name` | string | Operator name as fallback for matching. |
+| `operators[].parallelism` | int | Operator parallelism. `-1` means Flink default. |
+| `operators[].chainStrategy` | string | `HEAD`, `ALWAYS`, or `NEVER`. Controls operator chaining. |
+| `operators[].resource.profile` | string | Preset: `small`, `normal`, `large`, `xlarge`. |
+| `operators[].resource.cpu` | double | CPU cores (fractional allowed). |
+| `operators[].resource.heap` | string | Task heap memory, e.g. `"512 MB"`, `"2g"`. |
+| `operators[].resource.managed` | string | Managed memory, e.g. `"256m"`. |
+
+### Catalog Snapshot JSON
+
+Describes a self-contained catalog with tables, views, and UDFs.
+
+```json
+{
+  "version": 1,
+  "snapshotId": "example-word-count",
+  "catalogName": "platform",
+  "databaseName": "default",
+  "tables": [
+    {
+      "database": "default",
+      "name": "ods_words",
+      "columns": [
+        { "name": "sentence", "type": "STRING", "nullable": true }
+      ],
+      "options": {
+        "connector": "datagen",
+        "rows-per-second": "1"
+      }
+    }
+  ],
+  "views": [],
+  "udfs": [
+    {
+      "name": "my_reverse",
+      "className": "examples.udf.MyReverseFunction",
+      "functionLanguage": "JAVA",
+      "jarRef": "example-udf-reverse.jar"
+    }
+  ]
+}
+```
+
+---
+
+## Architecture
+
+Flink SQL Bootstrap operates as a thin orchestration layer on top of Flink's official APIs. It does **not** modify the Flink engine, Planner, or SQL semantics.
+
+```
++------------------+     +---------------------+     +---------------------+
+|   SQL Script     | --> |  StreamingScript    | --> |  Flink Table API    |
+|  (DDL + DML)     |     |     Executor        |     |  (InternalPlan)     |
++------------------+     +---------------------+     +---------------------+
+                                |                              |
+                                v                              v
++------------------+     +---------------------+     +---------------------+
+| Catalog Snapshot | --> |  Non-DML: execute   |     |  compilePlan()      |
+|   (JSON)         |     |  DML: delay & batch |     |  translatePlan()    |
++------------------+     +---------------------+     +---------------------+
+                                                              |
++------------------+     +---------------------+              |
+| Resource Hint    | --> | injectResourceSpec()|<-------------+
+|   (JSON)         |     |  (per-operator)     |
++------------------+     +---------------------+
+                                |
+                                v
+                       +---------------------+
+                       | executeInternal()   |
+                       | (reflection submit) |
+                       +---------------------+
+```
+
+Key design decisions:
+- **DDL executes immediately** during script splitting, because subsequent statements may depend on catalog state.
+- **DML is delayed** — parsed, compiled, and translated as a batch, so resource specs can be injected into the `Transformation` DAG before submission.
+- **Resource injection via SlotSharingGroup** — avoids Flink's `isPartialResourceConfigured()` check, allowing selective per-operator tuning.
+
+---
+
+## Capability Boundaries
+
+**What it is:**
+- A production-grade Flink SQL Application Template.
+- A launcher that bridges Flink SQL scripts with external metadata and fine-grained resource control.
+
+**What it is not:**
+- **Not** Flink SQL Gateway — it follows the `flink run` job submission paradigm, not the interactive Gateway pattern.
+- **Not** a utility library — it is an **application template** with a `main()` method, not a dependency you import.
+
+**Boundaries:**
+- Zero modifications to the Flink engine, Planner, or SQL semantics.
+- No custom SQL dialects — you get exactly the same results as native Flink SQL.
+- User Flink configurations are passed through as-is.
+
+---
 
 ## Contributing
 
-To be added.
+Contributions are welcome! Areas where help is especially appreciated:
+
+- More comprehensive unit tests and integration tests.
+- Documentation and use-case examples.
+- Bug reports and feature requests — please open an issue with a minimal reproduction.
+
+---
+
+## License
+
+Licensed under the Apache License, Version 2.0.
+See [LICENSE](LICENSE) for details.

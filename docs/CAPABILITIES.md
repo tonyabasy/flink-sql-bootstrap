@@ -14,7 +14,6 @@
 
 1. **Not a Flink SQL Gateway.** Flink 2.x provides Multi-Statement SQL Script capabilities through SQL Gateway, but this approach has certain limitations and does not align with the job submission habits of most users. We will not replicate that.
 2. **Not a utility component** (in the way that a library like `commons-lang3` is). Flink SQL Bootstrap is a **Flink SQL Application Template** — a new paradigm for Flink SQL job submission.
-3. **Not a commercial project.** This project's original intent is to provide Flink users with a production-grade approach and methodology for Flink SQL. It is not intended for profit.
 
 ### Boundaries
 

@@ -13,7 +13,6 @@
 
 1. **不是 Flink SQL Gateway。** Flink 2.x 通过 SQL Gateway 提供了 Multi-Statement SQL Script 的能力，但这种方式有一定局限性，且不符合大部分用户提交 Flink Job 的习惯，我们不会做这些。
 2. **不是一个工具组件**（类似于 `commons-lang3` 工具包那样）。Flink SQL Bootstrap 是一个 **Flink SQL Application Template**，给 Flink SQL Job 的提交提供一种新思路。
-3. **不是一个盈利性的项目。** 该项目的初衷是给 Flink 用户提供一种 Flink SQL 生产级的解决思路和方法，并不会以此为盈利。
 
 ### 边界是什么
 
