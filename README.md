@@ -395,7 +395,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full g
 | [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
 | [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability boundaries — what this project is and is not |
 | [CONTEXT.md](CONTEXT.md) | Domain glossary and terminology |
-| [docs/agents/](docs/agents/) | AI Agent collaboration guidelines |
 
 ---
 
