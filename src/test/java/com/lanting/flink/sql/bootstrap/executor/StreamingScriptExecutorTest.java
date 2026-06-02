@@ -22,10 +22,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.lanting.flink.sql.bootstrap.Utils;
 import com.lanting.flink.sql.bootstrap.flink.UriSafeSessionContext;
+import com.lanting.flink.sql.bootstrap.resource.OperatorSpec;
+import com.lanting.flink.sql.bootstrap.resource.ResourceEntity;
 
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.transformations.PhysicalTransformation;
 import org.apache.flink.table.delegation.InternalPlan;
 import org.apache.flink.table.gateway.api.session.SessionEnvironment;
 import org.apache.flink.table.gateway.api.session.SessionHandle;
@@ -146,4 +149,203 @@ class StreamingScriptExecutorTest {
         assertNotNull(transformations);
         assertFalse(transformations.isEmpty());
     }
+
+    // ─── helpers ──────────────────────────────────────────────────────────
+
+    private List<Transformation<?>> compileAndTransform(StreamingScriptExecutor executor) {
+        InternalPlan plan = executor.compile(executor.getScript());
+        List<Transformation<?>> transformations = executor.transform(plan);
+        return transformations;
+    }
+
+    private static <T extends Transformation<?>> T firstPhysical(List<Transformation<?>> transformations) {
+        for (Transformation<?> t : transformations) {
+            if (t instanceof PhysicalTransformation) {
+                @SuppressWarnings("unchecked")
+                T casted = (T) t;
+                return casted;
+            }
+        }
+        throw new IllegalStateException("No PhysicalTransformation found");
+    }
+
+    /**
+     * 基于当前 executor 生成一个完整的 resource JSON，所有算子覆盖，
+     * 然后可用于修改特定算子的参数后做 inject。
+     */
+    private String fullResourceJson(StreamingScriptExecutor executor) {
+        ResourceEntity spec = executor.generateResultSpec();
+        return com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec);
+    }
+
+    // ─── injectResourceSpec ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("injectResourceSpec — UID 精确匹配设置并行度")
+    void injectByUid() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        String uid = firstPhysical(transformations).getUid();
+
+        ResourceEntity spec = executor.generateResultSpec();
+        for (OperatorSpec op : spec.getOperators()) {
+            if (uid.equals(op.getUid())) {
+                op.setParallelism(7);
+            }
+        }
+        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+
+        assertEquals(7, firstPhysical(transformations).getParallelism());
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — 名称兜底匹配")
+    void injectByName() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        String name = firstPhysical(transformations).getName();
+
+        ResourceEntity spec = executor.generateResultSpec();
+        for (OperatorSpec op : spec.getOperators()) {
+            if (name.equals(op.getName())) {
+                op.setUid(null); // 去掉 UID 走名称匹配路径
+                op.setParallelism(5);
+            }
+        }
+        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+
+        assertEquals(5, firstPhysical(transformations).getParallelism());
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — 无匹配 UID 则抛异常")
+    void injectNoMatch() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+
+        String json = "{\"version\":1,\"operators\":[{\"uid\":\"nonexistent\",\"parallelism\":99}]}";
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.injectResourceSpec(transformations, json));
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — 资源注入 (CPU + Heap Memory)")
+    void injectResource() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        String uid = firstPhysical(transformations).getUid();
+
+        ResourceEntity spec = executor.generateResultSpec();
+        for (OperatorSpec op : spec.getOperators()) {
+            if (uid.equals(op.getUid())) {
+                com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec res =
+                        new com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec(
+                                Double.valueOf(1.5), "2048 MB", null, null, Collections.emptyMap());
+                op.setResource(res);
+            }
+        }
+        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+
+        assertTrue(firstPhysical(transformations).getSlotSharingGroup().isPresent());
+        assertEquals(1.5,
+                firstPhysical(transformations).getSlotSharingGroup().get().getCpuCores().orElse(0d));
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — profile 预置规格解析")
+    void injectProfile() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        String uid = firstPhysical(transformations).getUid();
+
+        ResourceEntity spec = executor.generateResultSpec();
+        for (OperatorSpec op : spec.getOperators()) {
+            if (uid.equals(op.getUid())) {
+                op.setResource(com.lanting.flink.sql.bootstrap.resource.OperatorResourceSpec.SMALL);
+            }
+        }
+        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+
+        assertTrue(firstPhysical(transformations).getSlotSharingGroup().isPresent());
+        assertEquals(0.25,
+                firstPhysical(transformations).getSlotSharingGroup().get().getCpuCores().orElse(0d));
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — Chain 策略注入")
+    void injectChainStrategy() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        String uid = firstPhysical(transformations).getUid();
+
+        ResourceEntity spec = executor.generateResultSpec();
+        for (OperatorSpec op : spec.getOperators()) {
+            if (uid.equals(op.getUid())) {
+                op.setChainStrategy("HEAD");
+            }
+        }
+        executor.injectResourceSpec(transformations, com.lanting.flink.sql.bootstrap.util.JSON.toJSONString(spec));
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — 空字符串跳过注入")
+    void injectEmptyResource() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+        ResourceEntity spec = executor.generateResultSpec();
+        int count = spec.getOperators().size();
+
+        executor.injectResourceSpec(transformations, "");
+
+        // 空字符串跳过，不改变任何东西
+        assertEquals(count, executor.generateResultSpec().getOperators().size());
+    }
+
+    @Test
+    @DisplayName("injectResourceSpec — 非法 JSON 抛异常")
+    void injectBadJson() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        List<Transformation<?>> transformations = compileAndTransform(executor);
+
+        assertThrows(RuntimeException.class,
+                () -> executor.injectResourceSpec(transformations, "{bad}"));
+    }
+
+    // ─── generateResultSpec ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("generateResultSpec — 输出合法结构")
+    void generateSpecStructure() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        ResourceEntity spec = executor.generateResultSpec();
+
+        assertTrue(spec.getVersion() > 0);
+        assertNotNull(spec.getOperators());
+        assertFalse(spec.getOperators().isEmpty());
+    }
+
+    @Test
+    @DisplayName("generateResultSpec — UID 与 Transformation 一致")
+    void generateSpecUids() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        ResourceEntity spec = executor.generateResultSpec();
+
+        for (OperatorSpec op : spec.getOperators()) {
+            assertNotNull(op.getUid(), "UID must not be null for " + op.getName());
+            assertNotNull(op.getName(), "Name must not be null for " + op.getUid());
+        }
+    }
+
+    @Test
+    @DisplayName("generateResultSpec — 只包含 PhysicalTransformation")
+    void generateSpecOnlyPhysical() throws Exception {
+        StreamingScriptExecutor executor = createExecutor("sql/test_simple_dml.sql");
+        ResourceEntity spec = executor.generateResultSpec();
+        List<Transformation<?>> all = executor.allTransformations(executor.getTransformations());
+
+        long physicalCount = all.stream()
+                .filter(t -> t instanceof PhysicalTransformation).count();
+        assertEquals(physicalCount, spec.getOperators().size());
+    }
+
 }

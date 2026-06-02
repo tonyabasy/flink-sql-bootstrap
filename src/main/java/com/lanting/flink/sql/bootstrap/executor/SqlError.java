@@ -18,12 +18,15 @@
  */
 package com.lanting.flink.sql.bootstrap.executor;
 
+import lombok.Getter;
+
 /**
  * 带源码位置信息的 SQL 异常。
  *
  * <p>参考 Calcite {@code SqlParserPos} 的设计，记录错误的起始行号/列号，
  * 在异常消息中清晰呈现错误位置。
  */
+@Getter
 public class SqlError extends RuntimeException {
 
     private final int lineNumber;
@@ -39,14 +42,6 @@ public class SqlError extends RuntimeException {
         super(format(line, column, message), cause);
         this.lineNumber = line;
         this.columnNumber = column;
-    }
-
-    public int getLineNumber() {
-        return lineNumber;
-    }
-
-    public int getColumnNumber() {
-        return columnNumber;
     }
 
     private static String format(int line, int col, String message) {
