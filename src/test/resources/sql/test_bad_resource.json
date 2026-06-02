@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "defaultParallelism": 2,
+  "operators": [
+    {
+      "uid": "1_source", NOT_VALID_JSON_HERE
+    }
+  ]
+}
