@@ -204,7 +204,7 @@ public class SqlEntryPoint {
         ConfigUtils.encodeCollectionToConfig(configuration, PipelineOptions.CLASSPATHS, mergedDependencies, URI::toString);
 
         // 从配置 pipeline.jars 中获取依赖 Jar（如：UDFs Jar），如果使用 flink run 启动该配置是 -C 参数指定的 classpath
-        // Flink 1.x 兼容：因 Flink 2.x 构造器 2-arg 从 URL -> URI 导致和 Flink 1.x 彻底无法兼容，这里将 deps 在
+        // Flink 1.20.x 兼容：因 Flink 2.x 构造器 2-arg 从 URL -> URI 导致和 Flink 1.20.x 彻底无法兼容，这里将 deps 在
         // UriSafeSessionContext.create 传入用于创建对应的 ClassLoader（deps 只在创建 MutableURLClassLoader 时 使用）
         DefaultContext defaultContext = new DefaultContext(configuration, null);
 

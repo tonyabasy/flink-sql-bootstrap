@@ -40,7 +40,7 @@ import org.apache.flink.table.resource.ResourceManager;
 import java.lang.reflect.Method;
 
 /**
- * Application Mode 兼容的 OperationExecutor，用于向下兼容 Flink 1.x。
+ * Application Mode 兼容的 OperationExecutor，用于向下兼容 Flink 1.20.x。
  *
  * <p>Flink 2.x 中 {@code ClientUtils.executeProgram()} 在 Application Mode 下
  * 会通过 {@code StreamContextEnvironment.setAsContext()} 注入
@@ -48,7 +48,7 @@ import java.lang.reflect.Method;
  * {@code new StreamExecutionEnvironment(config, classloader)} 能自动获取该 loader，
  * 不存在此问题。
  *
- * <p>但在 Flink 1.x 中，父类构造的 {@link StreamExecutionEnvironment} 使用
+ * <p>但在 Flink 1.20 中，父类构造的 {@link StreamExecutionEnvironment} 使用
  * {@code DefaultExecutorServiceLoader}，通过 SPI 发现
  * {@code EmbeddedExecutorFactory} 后，因其 {@code isCompatibleWith()}
  * 永远返回 {@code false} 而无法匹配，导致 {@code No ExecutorFactory found}。

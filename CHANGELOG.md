@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SQL syntax validation (`--validate`)** — Validate SQL syntax locally without submitting to a Flink cluster. Parse errors include exact line and column numbers for rapid iteration.
 - **SQL compilation and execution plan output (`--compile`)** — Parse, validate, and compile SQL, outputting the `InternalPlan` JSON execution plan without actually submitting the job, useful for preview and debugging.
 - **Resource template auto-generation (`--init-resource`)** — Automatically extract the Transformation DAG structure from the current SQL script and generate a per-operator resource configuration JSON template. Users can modify values and inject them directly.
-- **Flink 1.x / 2.x dual-version compatibility** — Bypass SPI compatibility checks via `ApplicationOperationExecutor`, and fix the `URI→URL` type conversion `ArrayStoreException` via `UriSafeSessionContext`, enabling normal job startup in Application Mode.
+- **Flink 1.20.x / 2.x dual-version compatibility** — Bypass SPI compatibility checks via `ApplicationOperationExecutor`, and fix the `URI→URL` type conversion `ArrayStoreException` via `UriSafeSessionContext`, enabling normal job startup in Application Mode.
 - **Deterministic operator UID generation** — Force-enable `TABLE_EXEC_UID_GENERATION = ALWAYS` to ensure every Transformation has a stable UID, serving as the exact match key in the resource configuration JSON.
-- **Formatted SQL result printing** — Compatible with Flink 1.x/2.x `TableauStyle` result table rendering, with exponential backoff via `RowDataIterator` for polling results.
+- **Formatted SQL result printing** — Compatible with Flink 1.20.x/2.x `TableauStyle` result table rendering, with exponential backoff via `RowDataIterator` for polling results.
 - **Exception hierarchy** — Define `SqlValidateException`, `SqlCompileException`, and `SqlParsePosException`; SQL parse errors carry source line and column position information.
 - **Experimental API marker** — Introduce the `@Experimental` annotation to mark incubating APIs such as the DAG printer.
 - **DAG topology visualization (experimental)** — ASCII-art rendering of the Transformation DAG, supporting typical topologies such as dual-source Join, Union, and multi-way aggregation in the console.
@@ -39,3 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Operator resource configuration example ([`example-resource.json`](src/main/resources/example-resource.json)).
 - Sample UDF JARs (`example-udf-reverse.jar`, `example-udf-substring.jar`).
 - AI Agent collaboration guidelines (`docs/agents/`).
+- Flink multi-version compatibility test suite (`scripts/flink-cmp-test/`) — automated testing across Flink 1.17 ~ 2.2 in Local, YARN, and Kubernetes deployment modes. Generates HTML compatibility reports (`docs/flink-cmp-test-<version>.html`) with pass/fail matrix and error classification.
+
+- **YARN** and **Kubernetes** deployment modes are not yet tested (marked as NT in reports).
+- Full compatibility report: [`docs/flink-compat-test-1.0-SNAPSHOT.html`](docs/flink-compat-test-1.0-SNAPSHOT.html)

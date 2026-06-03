@@ -62,6 +62,28 @@ Native Flink SQL has three pain points in production:
 
 ---
 
+## Flink Version Compatibility
+
+Verified via the [compatibility test suite](docs/flink-compatibility-test.md) (Local mode, 2026-06-03):
+
+| Flink Version | Local | YARN-App | YARN-Session | K8s-Session | K8s-App |
+|---------------|:-----:|:--------:|:------------:|:-----------:|:-------:|
+| 1.17.2 | ❌ | — | — | — | — |
+| 1.18.1 | ❌ | — | — | — | — |
+| 1.19.3 | ❌ | — | — | — | — |
+| 1.20.4 | ✅ | — | — | — | — |
+| 2.0.2 | ✅ | — | — | — | — |
+| 2.1.1 | ✅ | — | — | — | — |
+| 2.2.0 | ✅ | — | — | — | — |
+
+- **✅ PASS** — JAR submits and executes successfully.
+- **❌ FAIL** — API incompatibility prevents job submission or execution.
+- **—** — Not yet tested (NT).
+
+Full report: [`docs/flink-compat-test-1.0-SNAPSHOT.html`](docs/flink-compat-test-1.0-SNAPSHOT.html)
+
+---
+
 ## Quick Start
 
 ### Requirements
@@ -401,6 +423,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full g
 | [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
 | [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability boundaries — what this project is and is not |
 | [CONTEXT.md](CONTEXT.md) | Domain glossary and terminology |
+| [docs/flink-compatibility-test.md](docs/flink-compatibility-test.md) | Flink multi-version compatibility test guide |
 
 ---
 

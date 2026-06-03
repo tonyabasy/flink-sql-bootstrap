@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flink SQL App - Compatibility Report</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+      Roboto, Helvetica, Arial, sans-serif;
+    max-width: 960px; margin: 40px auto; padding: 0 24px;
+    color: #24292f; background: #fff; line-height: 1.6;
+  }
+  h1 { font-size: 28px; border-bottom: 1px solid #d0d7de;
+      padding-bottom: 10px; margin-bottom: 8px; }
+  h2 { font-size: 22px; margin-top: 32px;
+      border-bottom: 1px solid #d0d7de; padding-bottom: 8px; }
+  h3 { font-size: 16px; margin: 20px 0 8px; }
+  h4 { font-size: 14px; margin: 16px 0 4px; color: #57606a; }
+  .meta { font-size: 14px; margin-bottom: 24px; }
+  .meta p { margin: 2px 0; }
+  .meta code { background: #f6f8fa; padding: 2px 6px;
+      border-radius: 4px; font-size: 13px; }
+  pre, .code-block {
+    background: #f6f8fa; border: 1px solid #d0d7de;
+    border-radius: 6px; padding: 16px;
+    font-size: 12px; line-height: 1.5;
+    overflow-x: auto; white-space: pre-wrap;
+    overflow-wrap: break-word;
+    font-family: 'SFMono-Regular', Consolas,
+      'Liberation Mono', Menlo, monospace;
+  }
+  .icon svg { width: 16px; height: 16px; }
+  .icon-sm svg { width: 14px; height: 14px; }
+  .icon { display: inline-flex; align-items: center; vertical-align: middle; }
+  .icon-pass { color: #1a7f37; }
+  .icon-fail { color: #cf222e; }
+  .icon-skip { color: #9a6700; }
+  .icon-nt   { color: #8b949e; }
+  table { width: 100%; border-collapse: collapse;
+      margin: 16px 0; font-size: 14px; }
+  th { background: #f6f8fa; padding: 10px 12px;
+      border: 1px solid #d0d7de; font-weight: 600;
+      white-space: nowrap; }
+  td { padding: 10px 12px; border: 1px solid #d0d7de;
+      text-align: center; font-variant-numeric: tabular-nums;
+      vertical-align: middle; }
+  td:first-child { text-align: left;
+      font-family: 'SFMono-Regular', Consolas,
+        'Liberation Mono', Menlo, monospace;
+      font-weight: 500; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fcfcfd; }
+  .legend { font-size: 13px; color: #57606a;
+      margin-bottom: 32px; }
+  .legend .icon svg, .legend .icon-sm svg {
+      vertical-align: middle; }
+  .fail-card { border: 1px solid #d0d7de;
+      border-radius: 6px; margin: 16px 0; overflow: hidden; }
+  .fail-card summary { padding: 12px 16px; cursor: pointer;
+      font-weight: 600; font-size: 15px; background: #fcfcfd;
+      border-bottom: 1px solid #d0d7de; }
+  .fail-card summary:hover { background: #f6f8fa; }
+  .fail-card[open] summary { border-bottom: 1px solid #d0d7de; }
+  .fail-card .body { padding: 16px; }
+  .fail-card .body p { margin: 4px 0; font-size: 14px; }
+  .fail-card .body .label { font-weight: 600; color: #57606a; }
+  .fail-card .cmd {
+    background: #f6f8fa; border-radius: 6px;
+    padding: 10px 14px; font-size: 12px; line-height: 1.5;
+    margin: 8px 0; overflow-x: auto; white-space: pre-wrap;
+    overflow-wrap: break-word;
+    font-family: 'SFMono-Regular', Consolas,
+      'Liberation Mono', Menlo, monospace;
+  }
+  .fail-card pre { margin: 8px 0 0; padding: 12px 16px; }
+</style>
+</head>
+<body>
+
+<h1>Flink SQL App &mdash; Compatibility Report</h1>
+
+<div class="meta">
+<p><strong>Last updated:</strong> 2026-06-03 10:36 UTC</p>
+<p><strong>Commit:</strong> <code>a66be75</code></p>
+<p><strong>Version:</strong> <code>1.0-SNAPSHOT</code></p>
+<p><strong>Java:</strong> <code>openjdk version "11.0.28" 2025-07-15 LTS</code></p>
+</div>
+
+<h2>Test Configuration</h2>
+
+<div>
+    <h4>Modes:</h4>
+    <p>Local, YARN-App, YARN-Session, K8s-Session, K8s-App</p>
+</div>
+<div>
+    <h4>Command:</h4>
+    <pre>$FLINK_HOME/bin/flink run \
+    --target local \
+    -Dpipeline.name="compat-test-1.17.2-local" \
+    -Dexecution.attached=true \
+    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
+    --script-file classpath:example-word-count.sql \
+    --resource-file classpath:example-resource.json \
+    --catalog-file classpath:example-catalog.json \
+    --dependency classpath:example-udf-reverse.jar \
+    --dependency classpath:example-udf-substring.jar</pre>
+</div>
+<div>
+    <h4>Test SQL:</h4>
+    <pre>-- 表的 DDL 和 UDF 已通过 Catalog 快照预注册，脚本中只需写 DML
+INSERT INTO dws_word_count
+SELECT my_reverse(my_substring(word, 0, 2)) AS word, COUNT(*) AS cnt
+FROM ods_words
+CROSS JOIN UNNEST(SPLIT(sentence, ' ')) AS t(word)
+GROUP BY my_reverse(my_substring(word, 0, 2));</pre>
+</div>
+<h2>Compatibility Matrix</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th align="left">Flink Version</th>
+      <th align="center">Local</th>
+      <th align="center">YARN-App</th>
+      <th align="center">YARN-Session</th>
+      <th align="center">K8s-Session</th>
+      <th align="center">K8s-App</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="left">1.17.2</td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> 06-03 10:31</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">1.18.1</td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> 06-03 10:32</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">1.19.3</td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> 06-03 10:32</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">1.20.4</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">2.0.2</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">2.1.1</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">2.2.0</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="legend"><span class="icon-sm icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Pass &nbsp;&middot;&nbsp; <span class="icon-sm icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> Fail &nbsp;&middot;&nbsp; <span class="icon-sm icon-skip"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2L1.5 14h13z" fill="#9a6700"/><path d="M8 6v4M8 11.5v.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> Skip &nbsp;&middot;&nbsp; <span class="icon-sm icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span> Not tested &nbsp;|&nbsp; Cell shows latest result + run time (MM-DD HH:MM UTC)</p>
+<h2>Failure Details</h2>
+
+<details class="fail-card">
+  <summary>1.17.2 &times; local &mdash; 🔴 java.lang.NoSuchMethodError</summary>
+  <div class="body">
+    <p><span class="label">Error Type:</span> 🔴 API Incompatibility (class/method not found)</p>
+    <p><span class="label">Last Run:</span> 2026-06-03T10:31:58Z</p>
+    <p><span class="label">Command:</span></p>
+    <div class="cmd">$FLINK_HOME/bin/flink run \
+    --target local \
+    -Dpipeline.name="compat-test-1.17.2-local" \
+    -Dexecution.attached=true \
+    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
+    --script-file classpath:example-word-count-advanced.sql \
+    --resource-file classpath:example-resource.json \
+    --catalog-file classpath:example-catalog.json \
+    --dependency classpath:example-udf-reverse.jar \
+    --dependency classpath:example-udf-substring.jar</div>
+    <p><span class="label">Error:</span></p>
+    <pre>
+      java.lang.NoSuchMethodError: 'org.apache.flink.table.catalog.CatalogTable$Builder org.apache.flink.table.catalog.CatalogTable.newBuilder()'
+    </pre>
+  </div>
+</details>
+
+<details class="fail-card">
+  <summary>1.18.1 &times; local &mdash; 🔴 java.lang.NoSuchMethodError</summary>
+  <div class="body">
+    <p><span class="label">Error Type:</span> 🔴 API Incompatibility (class/method not found)</p>
+    <p><span class="label">Last Run:</span> 2026-06-03T10:32:00Z</p>
+    <p><span class="label">Command:</span></p>
+    <div class="cmd">$FLINK_HOME/bin/flink run \
+    --target local \
+    -Dpipeline.name="compat-test-1.18.1-local" \
+    -Dexecution.attached=true \
+    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
+    --script-file classpath:example-word-count-advanced.sql \
+    --resource-file classpath:example-resource.json \
+    --catalog-file classpath:example-catalog.json \
+    --dependency classpath:example-udf-reverse.jar \
+    --dependency classpath:example-udf-substring.jar</div>
+    <p><span class="label">Error:</span></p>
+    <pre>
+      java.lang.NoSuchMethodError: 'org.apache.flink.table.catalog.CatalogTable$Builder org.apache.flink.table.catalog.CatalogTable.newBuilder()'
+    </pre>
+  </div>
+</details>
+
+<details class="fail-card">
+  <summary>1.19.3 &times; local &mdash; 🔴 java.lang.NoSuchMethodError</summary>
+  <div class="body">
+    <p><span class="label">Error Type:</span> 🔴 API Incompatibility (class/method not found)</p>
+    <p><span class="label">Last Run:</span> 2026-06-03T10:32:02Z</p>
+    <p><span class="label">Command:</span></p>
+    <div class="cmd">$FLINK_HOME/bin/flink run \
+    --target local \
+    -Dpipeline.name="compat-test-1.19.3-local" \
+    -Dexecution.attached=true \
+    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
+    --script-file classpath:example-word-count-advanced.sql \
+    --resource-file classpath:example-resource.json \
+    --catalog-file classpath:example-catalog.json \
+    --dependency classpath:example-udf-reverse.jar \
+    --dependency classpath:example-udf-substring.jar</div>
+    <p><span class="label">Error:</span></p>
+    <pre>
+      java.lang.NoSuchMethodError: 'org.apache.flink.table.catalog.CatalogTable$Builder org.apache.flink.table.catalog.CatalogTable.newBuilder()'
+    </pre>
+  </div>
+</details>
+
+</body>
+</html>

@@ -39,10 +39,10 @@ import javax.annotation.Nullable;
  * <p>不直接使用 Flink 2.x 的
  * {@code org.apache.flink.table.gateway.service.application.Printer}，因为其
  * {@code print(ResultFetcher)} 方法依赖 {@code ResultFetcher.getPrintStyle()}——
- * 该方法是 Flink 2.x 新增的，在 1.x 中不存在。
+ * 该方法是 Flink 2.x 新增的，在 1.20 中不存在。
  *
  * <p>本类通过 {@link #getPrintStyle(ResolvedSchema)} 从 Schema 直接构建
- * {@link TableauStyle}，绕过了版本差异，在 1.x 和 2.x 上均可工作。
+ * {@link TableauStyle}，绕过了版本差异，在 1.20.x 和 2.x 上均可工作。
  */
 public class Printer {
 

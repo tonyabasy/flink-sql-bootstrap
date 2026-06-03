@@ -1,0 +1,55 @@
+# =============================================================================
+# flink-compat-test Configuration
+# =============================================================================
+# Paths are relative to project root unless starting with ~/ or /
+
+# ── App ─────────────────────────────────────────────────────────────────────
+# Application JAR path
+app_jar: "target/flink-sql-bootstrap-1.0-SNAPSHOT.jar"
+
+# Test SQL script on classpath
+test_script: "classpath:example-word-count-advanced.sql"
+
+# ── Run mode (optional) ─────────────────────────────────────────────────────
+# 留空 = 正常执行; 或 validate / compile / init-resource（三者互斥）
+#   validate:      仅校验 SQL 语法，不编译不执行
+#   compile:       校验 + 编译，输出优化计划 JSON
+#   init-resource: 生成算子资源配置模板
+run_mode: ""
+
+# ── Optional application arguments ──────────────────────────────────────────
+# 以下为 flink-sql-bootstrap 的额外参数，留空 = 不使用
+resource_file: "classpath:example-resource.json"
+catalog_file: "classpath:example-catalog.json"
+dependencies:
+  - "classpath:example-udf-reverse.jar"
+  - "classpath:example-udf-substring.jar"
+
+# ── Output paths ────────────────────────────────────────────────────────────
+# Raw test results directory
+results_dir: target/compat-test-results
+
+# Generated report output directory
+report_dir: docs
+
+# ── Flink distribution ──────────────────────────────────────────────────────
+# Cache directory for downloaded Flink distributions
+flink_cache_dir: ~/.flink-dist
+
+# ── Execution ───────────────────────────────────────────────────────────────
+# Timeout (seconds) waiting for print output before failing
+job_timeout: 30
+
+# ── Test modes ──────────────────────────────────────────────────────────────
+# Each mode: key (passed to --target) and display label
+modes:
+  - key: local
+    label: Local
+  - key: yarn-application
+    label: YARN-App
+  - key: yarn-session
+    label: YARN-Session
+  - key: kubernetes-session
+    label: K8s-Session
+  - key: kubernetes-application
+    label: K8s-App

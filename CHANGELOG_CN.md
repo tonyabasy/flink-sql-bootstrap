@@ -15,9 +15,9 @@
 - **SQL 语法校验（`--validate`）** —— 本地快速校验 SQL 语法，无需提交到 Flink 集群；解析错误精确到行号和列号，便于快速迭代
 - **SQL 编译与执行计划输出（`--compile`）** —— 解析、校验并编译 SQL，输出 `InternalPlan` JSON 执行计划，不实际提交作业，用于预览和调试
 - **资源模板自动生成（`--init-resource`）** —— 基于当前 SQL 脚本自动提取 Transformation DAG 结构，生成算子级资源配置 JSON 模板，用户修改数值后即可注入
-- **Flink 1.x / 2.x 双版本兼容** —— 通过 `ApplicationOperationExecutor` 绕过 SPI 兼容性检查，通过 `UriSafeSessionContext` 修复 `URI→URL` 类型转换导致的 `ArrayStoreException`，支持 Application Mode 下正常启动作业
+- **Flink 1.20.x / 2.x 双版本兼容** —— 通过 `ApplicationOperationExecutor` 绕过 SPI 兼容性检查，通过 `UriSafeSessionContext` 修复 `URI→URL` 类型转换导致的 `ArrayStoreException`，支持 Application Mode 下正常启动作业
 - **确定性算子 UID 生成** —— 强制开启 `TABLE_EXEC_UID_GENERATION = ALWAYS`，确保每个 Transformation 拥有稳定 UID，作为资源配置 JSON 的精确匹配键
-- **SQL 执行结果格式化打印** —— 兼容 Flink 1.x/2.x 的 `TableauStyle` 结果表渲染，带指数退避的 `RowDataIterator` 轮询结果
+- **SQL 执行结果格式化打印** —— 兼容 Flink 1.20.x/2.x 的 `TableauStyle` 结果表渲染，带指数退避的 `RowDataIterator` 轮询结果
 - **异常体系** —— 定义 `SqlValidateException`、`SqlCompileException`、`SqlParsePosException`，SQL 解析错误附带源码行列位置信息
 - **实验性 API 标记** —— 引入 `@Experimental` 注解，用于标记 DAG 打印器等孵化中的 API
 - **DAG 拓扑可视化（实验性）** —— ASCII 艺术渲染 Transformation DAG，支持双 Source Join、Union、多路聚合等典型拓扑结构的控制台打印
@@ -33,6 +33,16 @@
 
 - 提供完整的中英文 README，含快速开始、CLI 选项说明、配置示例
 - 提供能力边界文档（[CAPABILITIES_CN.md](docs/CAPABILITIES_CN.md)）
+- 提供领域术语表（[CONTEXT_CN.md](CONTEXT_CN.md)）
+- 提供 SQL 示例（[`example-word-count.sql`](src/main/resources/example-word-count.sql)、[`example-word-count-advanced.sql`](src/main/resources/example-word-count-advanced.sql)）
+- 提供 Catalog 快照示例（[`example-catalog.json`](src/main/resources/example-catalog.json)）
+- 提供算子资源配置示例（[`example-resource.json`](src/main/resources/example-resource.json)）
+- 提供 UDF 示例 JAR（`example-udf-reverse.jar`、`example-udf-substring.jar`）
+- AI Agent 协作指南 (`docs/agents/`)
+- Flink 多版本兼容性测试套件 (`scripts/flink-cmp-test/`) —— 自动化测试 Flink 1.17 ~ 2.2 在 Local、YARN、Kubernetes 部署模式下的兼容性，生成 HTML 兼容性报告 (`docs/flink-compat-test-<version>.html`)，包含通过/失败矩阵和错误分类
+
+- **YARN** 和 **Kubernetes** 部署模式尚未测试（报告中标记为 NT）。
+- 完整兼容性报告：[docs/flink-compat-test-1.0-SNAPSHOT.html](docs/flink-compat-test-1.0-SNAPSHOT.html)
 - 提供领域术语表（[CONTEXT.md](CONTEXT.md)）
 - 提供 SQL 示例（[`example-word-count.sql`](src/main/resources/example-word-count.sql)、[`example-word-count-advanced.sql`](src/main/resources/example-word-count-advanced.sql)）
 - 提供 Catalog 快照示例（[`example-catalog.json`](src/main/resources/example-catalog.json)）

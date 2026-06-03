@@ -554,10 +554,10 @@ public class StreamingScriptExecutor {
             char currentChar = 0;
 
             boolean hasNext = false;
-            // 兼容说明：Flink 1.x 和 2.x 的 OperationExecutor 构造器不同：
+            // 兼容说明：Flink 1.20.x 和 2.x 的 OperationExecutor 构造器不同：
             //   2.x 有两个构造器 — 2-arg (测试用，固定 StreamExecutionEnvironment::new) 和
             //   3-arg (生产用，接收 BiFunction<Configuration, ClassLoader, StreamExecutionEnvironment>)。
-            //   1.x 仅有 2-arg 构造器。当前使用 2-arg 构造器，在两者上均可工作。
+            //   1.20.x 仅有 2-arg 构造器。当前使用 2-arg 构造器，在两者上均可工作。
             // 每次重建 executor，因为上一条 DDL 可能改变了 planner 状态（如注册临时函数）
             executor = new ApplicationOperationExecutor(context, new Configuration());
             for (int i = position; i < script.length(); i++) {
