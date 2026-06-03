@@ -1,0 +1,35 @@
+name: 🚀 Feature Request
+description: Suggest an idea for this project
+title: "[FEAT] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Search before asking
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: textarea
+    attributes:
+      label: Problem to Solve
+      description: Describe the problem you're facing, not just the feature you want.
+      placeholder: |
+        When working with large catalogs, I have to manually ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed Solution
+      description: What would solve the problem? Be specific if possible.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Alternative Approaches
+      description: Have you considered any workarounds or alternative solutions?
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Additional Context
+      description: Links, references, use cases.
