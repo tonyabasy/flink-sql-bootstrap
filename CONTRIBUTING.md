@@ -5,6 +5,7 @@ Thanks for your contribution! Here's a quick-start guide.
 ## Quick Start
 
 ```bash
+# Or gitee repo: git@gitee.com:tonyabasy2025/flink-sql-bootstrap.git
 git clone https://github.com/your-username/flink-sql-bootstrap.git
 cd flink-sql-bootstrap
 mvn verify          # build + test + code style check

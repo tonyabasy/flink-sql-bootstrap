@@ -5,6 +5,7 @@
 ## 快速开始
 
 ```bash
+# 或 Gitee 仓库：git@gitee.com:tonyabasy2025/flink-sql-bootstrap.git
 git clone https://github.com/your-username/flink-sql-bootstrap.git
 cd flink-sql-bootstrap
 mvn verify          # 构建 + 测试 + 代码风格检查

@@ -52,13 +52,13 @@
 
 ## 核心能力
 
-1. **自定义 Catalog 快照** —— 将表、视图和 UDF 序列化为 JSON 文件。作业启动时 Catalog 已就绪，SQL 脚本中无需写 DDL。
+1. **自定义 Catalog 快照** —— 将表、视图和 UDF 序列化为 JSON 文件。作业启动时 Catalog 已就绪，SQL 脚本中无需写 DDL。支持多协议快照加载，为**实时数仓元数据管理**提供遍历。
 2. **Multi-Statement SQL Script** —— 在单个 `.sql` 文件中编写 `CREATE TABLE`、`SET`、`INSERT`、`CALL` 等语句。启动器自动切分、校验并编排执行。
 3. **细粒度资源调优** —— 通过 `--init-resource` 生成资源模板，按算子调整并行度和资源，并在作业提交前注入 Flink DAG。
-4. **多协议资源加载** —— 支持从 `classpath:`、`file://`、`http(s)://`、`hdfs://`、`s3://` 加载 SQL 脚本和配置。
+4. **多协议资源加载** —— 支持从 `classpath:`、`file://`、`http(s)://`、`hdfs://`、`s3://` 加载 SQL 脚本、Catalog 快照、细粒度资源配置。
 5. **支持所有 Flink 部署模式** —— 支持 Standalone、Per-Job、Application、Session 模式，以及 Local、YARN、Kubernetes 等资源环境。
 6. **SQL 语法校验与行级错误定位** —— 通过 `--validate` 在本地快速校验 SQL 语法，无需提交到 Flink 集群。错误信息精确到行号和列号，便于快速迭代。
-7. **Flink 1.20+ 兼容** —— 适配 Flink 1.20 及以后版本，不修改 Flink 引擎或 Planner。（未来会持续适配更多版本）。
+7. **Flink 1.20+ 兼容** —— 适配 Flink 1.20 及以后版本，不修改 Flink 引擎或 Planner。（未来会持续适配更多版本）
 
 ---
 

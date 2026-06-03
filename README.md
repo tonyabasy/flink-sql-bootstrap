@@ -52,7 +52,7 @@ Native Flink SQL has three pain points in production:
 
 ## Core Capabilities
 
-1. **Custom Catalog Snapshots** — Serialize your tables, views, and UDFs into a JSON file. The job starts with a fully prepared catalog, eliminating the need for DDL statements in the SQL script.
+1. **Custom Catalog Snapshots** — Serialize tables, views, and UDFs into a JSON file. The catalog is ready at job startup, so no DDL is needed in the SQL script. Supports multi-protocol snapshot loading for streamlined real-time data warehouse metadata management.
 2. **Multi-Statement SQL Script** — Write `CREATE TABLE`, `SET`, `INSERT`, and `CALL` statements in a single `.sql` file. The launcher splits, validates, and orchestrates execution automatically.
 3. **Fine-Grained Resource Tuning** — Generate a resource template via `--init-resource`, tune parallelism and resources per operator, and inject them into the Flink DAG before job submission.
 4. **Universal Protocol Support** — Load SQL scripts and configs from `classpath:`, `file://`, `http(s)://`, `hdfs://`, or `s3://`.
