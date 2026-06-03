@@ -42,7 +42,7 @@
 - Flink 多版本兼容性测试套件 (`scripts/flink-cmp-test/`) —— 自动化测试 Flink 1.17 ~ 2.2 在 Local、YARN、Kubernetes 部署模式下的兼容性，生成 HTML 兼容性报告 (`docs/flink-compat-test-<version>.html`)，包含通过/失败矩阵和错误分类
 
 - **YARN** 和 **Kubernetes** 部署模式尚未测试（报告中标记为 NT）。
-- 完整兼容性报告：[docs/flink-compat-test-1.0-SNAPSHOT.html](docs/flink-compat-test-1.0-SNAPSHOT.html)
+- 完整兼容性报告：[docs/flink-compat-test-1.0-SNAPSHOT.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0-SNAPSHOT.html)
 - 提供领域术语表（[CONTEXT.md](CONTEXT.md)）
 - 提供 SQL 示例（[`example-word-count.sql`](src/main/resources/example-word-count.sql)、[`example-word-count-advanced.sql`](src/main/resources/example-word-count-advanced.sql)）
 - 提供 Catalog 快照示例（[`example-catalog.json`](src/main/resources/example-catalog.json)）

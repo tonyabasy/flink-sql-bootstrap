@@ -80,7 +80,7 @@ Verified via the [compatibility test suite](docs/flink-compatibility-test.md) (L
 - **❌ FAIL** — API incompatibility prevents job submission or execution.
 - **—** — Not yet tested (NT).
 
-Full report: [`docs/flink-compat-test-1.0-SNAPSHOT.html`](docs/flink-compat-test-1.0-SNAPSHOT.html)
+Full report: [docs/flink-compat-test-1.0-SNAPSHOT.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0-SNAPSHOT.html)
 
 ---
 

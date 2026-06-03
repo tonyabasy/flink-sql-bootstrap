@@ -42,4 +42,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flink multi-version compatibility test suite (`scripts/flink-cmp-test/`) — automated testing across Flink 1.17 ~ 2.2 in Local, YARN, and Kubernetes deployment modes. Generates HTML compatibility reports (`docs/flink-cmp-test-<version>.html`) with pass/fail matrix and error classification.
 
 - **YARN** and **Kubernetes** deployment modes are not yet tested (marked as NT in reports).
-- Full compatibility report: [`docs/flink-compat-test-1.0-SNAPSHOT.html`](docs/flink-compat-test-1.0-SNAPSHOT.html)
+- Full compatibility report: [docs/flink-compat-test-1.0-SNAPSHOT.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0-SNAPSHOT.html)
