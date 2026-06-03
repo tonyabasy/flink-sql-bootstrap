@@ -71,6 +71,12 @@
 | Java | 11+ |
 | Flink | 1.20+ |
 
+> **前置准备**：本项目依赖 `flink-sql-gateway-${flink-version}.jar`，运行前需要将其从 `$FLINK_HOME/opt` 复制到 `$FLINK_HOME/lib`：
+>
+> ```bash
+> cp $FLINK_HOME/opt/flink-sql-gateway-*.jar $FLINK_HOME/lib
+> ```
+
 ### 编译
 
 ```bash

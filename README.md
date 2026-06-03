@@ -71,6 +71,12 @@ Native Flink SQL has three pain points in production:
 | Java | 11+ |
 | Flink | 1.20+ |
 
+> **Preparation**: This project depends on `flink-sql-gateway-${flink-version}.jar`. Before running, copy it from `$FLINK_HOME/opt` to `$FLINK_HOME/lib`:
+>
+> ```bash
+> cp $FLINK_HOME/opt/flink-sql-gateway-*.jar $FLINK_HOME/lib
+> ```
+
 ### Build
 
 ```bash

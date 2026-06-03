@@ -31,6 +31,12 @@
     <description>Fine-grained per-operator resource configuration for Apache Flink SQL jobs</description>
     <url>https://github.com/tonyabasy/flink-sql-bootstrap</url>
 
+    <scm>
+        <url>https://github.com/tonyabasy/flink-sql-bootstrap</url>
+        <connection>scm:git:https://github.com/tonyabasy/flink-sql-bootstrap.git</connection>
+        <developerConnection>scm:git:git@github.com:tonyabasy/flink-sql-bootstrap.git</developerConnection>
+    </scm>
+
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
