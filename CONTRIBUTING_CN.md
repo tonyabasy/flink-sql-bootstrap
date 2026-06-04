@@ -36,6 +36,26 @@ mvn verify          # 构建 + 测试 + 代码风格检查
 - [ ] 更新了相关文档
 - [ ] 无合并冲突
 
+## 兼容性测试
+
+提交修改 Flink 版本兼容性或反射逻辑的 PR 前，请先运行兼容性测试套件，确保没有引入回归：
+
+```bash
+# 先构建 JAR
+mvn clean package -DskipTests
+
+# 运行 Local 模式测试（无需外部集群）
+./scripts/flink-cmp-test/test-local.sh
+
+# 测试指定 Flink 版本
+./scripts/flink-cmp-test/test-local.sh --version 2.2.0
+
+# 生成 HTML 报告
+python3 scripts/flink-cmp-test/gen-report.py
+```
+
+YARN / Kubernetes 模式测试及 CI 集成详见 [docs/flink-compat-test_CN.md](docs/flink-compat-test_CN.md)。
+
 ## 代码风格
 
 本项目使用 [Spotless](https://github.com/diffplug/spotless) + Google Java Format。提交前自动修复：

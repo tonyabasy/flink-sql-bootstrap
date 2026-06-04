@@ -36,6 +36,26 @@ Requirements: Java 11+, Maven 3.6+.
 - [ ] Documentation updated
 - [ ] No merge conflicts
 
+## Compatibility Testing
+
+Before submitting a PR that modifies Flink version compatibility or reflection logic, run the compatibility test suite to ensure no regressions:
+
+```bash
+# Build the JAR first
+mvn clean package -DskipTests
+
+# Run Local mode tests (no external cluster needed)
+./scripts/flink-cmp-test/test-local.sh
+
+# Run tests for a specific Flink version
+./scripts/flink-cmp-test/test-local.sh --version 2.2.0
+
+# Generate the HTML report
+python3 scripts/flink-cmp-test/gen-report.py
+```
+
+See [docs/flink-compatibility-test.md](docs/flink-compatibility-test.md) for full details on YARN / Kubernetes mode testing and CI integration.
+
 ## Code Style
 
 This project uses [Spotless](https://github.com/diffplug/spotless) with Google Java Format. Auto-fix before committing:
