@@ -22,4 +22,5 @@ Thumbs.db
 CLAUDE.md
 .claude
 
-docs/agents.codebuddy/
+docs/agents
+.codebuddy/
