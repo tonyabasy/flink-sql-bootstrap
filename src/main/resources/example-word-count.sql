@@ -5,7 +5,7 @@ CREATE TEMPORARY TABLE source_table (
   sentence STRING
 ) WITH (
   'connector' = 'datagen',
-  'rows-per-second' = '1'
+  'number-of-rows' = '100'
 );
 
 CREATE TEMPORARY TABLE sink_table (

@@ -1,37 +1,38 @@
 # 下载地址前缀，国内用户可替换为以下镜像以加速下载：
-#   https://mirrors.cloud.tencent.com/apache/flink/
-download_base_url: "https://archive.apache.org/dist/flink/"
+download_base_url: "https://mirrors.cloud.tencent.com/apache/flink/"
+# download_base_url: "https://archive.apache.org/dist/flink/"
 
-flink_versions:
-  - version: "1.17.2"
-    java: "11"
-    download_url: "flink-1.17.2/flink-1.17.2-bin-scala_2.12.tgz"
-
-  - version: "1.18.1"
-    java: "11"
-    download_url: "flink-1.18.1/flink-1.18.1-bin-scala_2.12.tgz"
-
-  - version: "1.19.3"
-    java: "11"
-    download_url: "flink-1.19.3/flink-1.19.3-bin-scala_2.12.tgz"
-
-  - version: "1.20.4"
-    java: "11"
-    download_url: "flink-1.20.4/flink-1.20.4-bin-scala_2.12.tgz"
-
-  - version: "2.0.2"
-    java: "17"
-    download_url: "flink-2.0.2/flink-2.0.2-bin-scala_2.12.tgz"
-
-  - version: "2.1.1"
-    java: "17"
-    download_url: "flink-2.1.1/flink-2.1.1-bin-scala_2.12.tgz"
-
-  - version: "2.2.0"
-    java: "17"
-    download_url: "flink-2.2.0/flink-2.2.0-bin-scala_2.12.tgz"
-
-  # 新增版本只需在此追加，其余无需改动
+# 新增版本只需在此追加，其余无需改动
   # - version: "2.3.0"
   #   java: "17"
   #   download_url: "flink-2.3.0/flink-2.3.0-bin-scala_2.12.tgz"
+
+flink_versions:
+ - version: "2.2.0"
+   java: "17"
+   download_url: "flink-2.2.0/flink-2.2.0-bin-scala_2.12.tgz"
+
+ - version: "2.1.1"
+   java: "17"
+   download_url: "flink-2.1.1/flink-2.1.1-bin-scala_2.12.tgz"
+
+ - version: "2.0.2"
+   java: "17"
+   download_url: "flink-2.0.2/flink-2.0.2-bin-scala_2.12.tgz"
+
+ - version: "1.20.4"
+   java: "11"
+   download_url: "flink-1.20.4/flink-1.20.4-bin-scala_2.12.tgz"
+
+#  - version: "1.19.3"
+#    java: "11"
+#    download_url: "flink-1.19.3/flink-1.19.3-bin-scala_2.12.tgz"
+
+#  - version: "1.18.1"
+#    java: "11"
+#    download_url: "flink-1.18.1/flink-1.18.1-bin-scala_2.12.tgz"
+
+#  - version: "1.17.2"
+#    java: "11"
+#    download_url: "flink-1.17.2/flink-1.17.2-bin-scala_2.12.tgz"
+

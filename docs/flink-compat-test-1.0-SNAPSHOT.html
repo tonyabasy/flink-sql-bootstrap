@@ -80,8 +80,8 @@
 <h1>Flink SQL App &mdash; Compatibility Report</h1>
 
 <div class="meta">
-<p><strong>Last updated:</strong> 2026-06-03 10:36 UTC</p>
-<p><strong>Commit:</strong> <code>a66be75</code></p>
+<p><strong>Last updated:</strong> 2026-06-05 10:51 UTC</p>
+<p><strong>Commit:</strong> <code>3094b28</code></p>
 <p><strong>Version:</strong> <code>1.0-SNAPSHOT</code></p>
 <p><strong>Java:</strong> <code>openjdk version "11.0.28" 2025-07-15 LTS</code></p>
 </div>
@@ -96,7 +96,7 @@
     <h4>Command:</h4>
     <pre>$FLINK_HOME/bin/flink run \
     --target local \
-    -Dpipeline.name="compat-test-1.17.2-local" \
+    -Dpipeline.name="compat-test-2.2.0-local" \
     -Dexecution.attached=true \
     flink-sql-bootstrap-1.0-SNAPSHOT.jar \
     --script-file classpath:example-word-count.sql \
@@ -129,60 +129,36 @@ GROUP BY my_reverse(my_substring(word, 0, 2));</pre>
   </thead>
   <tbody>
     <tr>
-      <td align="left">1.17.2</td>
-      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> 06-03 10:31</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-    </tr>
-    <tr>
-      <td align="left">1.18.1</td>
-      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> 06-03 10:32</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-    </tr>
-    <tr>
-      <td align="left">1.19.3</td>
-      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span> 06-03 10:32</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-    </tr>
-    <tr>
-      <td align="left">1.20.4</td>
-      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-    </tr>
-    <tr>
-      <td align="left">2.0.2</td>
-      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="left">2.2.0</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span></td>
     </tr>
     <tr>
       <td align="left">2.1.1</td>
-      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span></td>
     </tr>
     <tr>
-      <td align="left">2.2.0</td>
-      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> 06-03 10:32</td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
-      <td align="center"><span class="icon icon-nt"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#8b949e" stroke-width="1.5"/></svg></span></td>
+      <td align="left">2.0.2</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span></td>
+    </tr>
+    <tr>
+      <td align="left">1.20.4</td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-pass"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#1a7f37"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>
+      <td align="center"><span class="icon icon-fail"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#cf222e"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span></td>
     </tr>
   </tbody>
 </table>
@@ -191,70 +167,49 @@ GROUP BY my_reverse(my_substring(word, 0, 2));</pre>
 <h2>Failure Details</h2>
 
 <details class="fail-card">
-  <summary>1.17.2 &times; local &mdash; 🔴 java.lang.NoSuchMethodError</summary>
+  <summary>2.2.0 &times; kubernetes-application &mdash; 🔴 pod flink-test/compat-submit-compat-app-2-2-0 terminated (Error)</summary>
   <div class="body">
-    <p><span class="label">Error Type:</span> 🔴 API Incompatibility (class/method not found)</p>
-    <p><span class="label">Last Run:</span> 2026-06-03T10:31:58Z</p>
-    <p><span class="label">Command:</span></p>
-    <div class="cmd">$FLINK_HOME/bin/flink run \
-    --target local \
-    -Dpipeline.name="compat-test-1.17.2-local" \
-    -Dexecution.attached=true \
-    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
-    --script-file classpath:example-word-count-advanced.sql \
-    --resource-file classpath:example-resource.json \
-    --catalog-file classpath:example-catalog.json \
-    --dependency classpath:example-udf-reverse.jar \
-    --dependency classpath:example-udf-substring.jar</div>
+    <p><span class="label">Error Type:</span> 🔴 Runtime Error</p>
+    <p><span class="label">Last Run:</span> 2026-06-05T18:42:28+0800</p>
     <p><span class="label">Error:</span></p>
     <pre>
-      java.lang.NoSuchMethodError: 'org.apache.flink.table.catalog.CatalogTable$Builder org.apache.flink.table.catalog.CatalogTable.newBuilder()'
+      pod flink-test/compat-submit-compat-app-2-2-0 terminated (Error)
     </pre>
   </div>
 </details>
 
 <details class="fail-card">
-  <summary>1.18.1 &times; local &mdash; 🔴 java.lang.NoSuchMethodError</summary>
+  <summary>2.1.1 &times; kubernetes-application &mdash; 🔴 TM pod exited without output</summary>
   <div class="body">
-    <p><span class="label">Error Type:</span> 🔴 API Incompatibility (class/method not found)</p>
-    <p><span class="label">Last Run:</span> 2026-06-03T10:32:00Z</p>
-    <p><span class="label">Command:</span></p>
-    <div class="cmd">$FLINK_HOME/bin/flink run \
-    --target local \
-    -Dpipeline.name="compat-test-1.18.1-local" \
-    -Dexecution.attached=true \
-    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
-    --script-file classpath:example-word-count-advanced.sql \
-    --resource-file classpath:example-resource.json \
-    --catalog-file classpath:example-catalog.json \
-    --dependency classpath:example-udf-reverse.jar \
-    --dependency classpath:example-udf-substring.jar</div>
+    <p><span class="label">Error Type:</span> 🔴 Runtime Error</p>
+    <p><span class="label">Last Run:</span> 2026-06-05T18:05:47+0800</p>
     <p><span class="label">Error:</span></p>
     <pre>
-      java.lang.NoSuchMethodError: 'org.apache.flink.table.catalog.CatalogTable$Builder org.apache.flink.table.catalog.CatalogTable.newBuilder()'
+      TM pod exited without output
     </pre>
   </div>
 </details>
 
 <details class="fail-card">
-  <summary>1.19.3 &times; local &mdash; 🔴 java.lang.NoSuchMethodError</summary>
+  <summary>2.0.2 &times; kubernetes-application &mdash; 🔴 TM pod exited without output</summary>
   <div class="body">
-    <p><span class="label">Error Type:</span> 🔴 API Incompatibility (class/method not found)</p>
-    <p><span class="label">Last Run:</span> 2026-06-03T10:32:02Z</p>
-    <p><span class="label">Command:</span></p>
-    <div class="cmd">$FLINK_HOME/bin/flink run \
-    --target local \
-    -Dpipeline.name="compat-test-1.19.3-local" \
-    -Dexecution.attached=true \
-    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
-    --script-file classpath:example-word-count-advanced.sql \
-    --resource-file classpath:example-resource.json \
-    --catalog-file classpath:example-catalog.json \
-    --dependency classpath:example-udf-reverse.jar \
-    --dependency classpath:example-udf-substring.jar</div>
+    <p><span class="label">Error Type:</span> 🔴 Runtime Error</p>
+    <p><span class="label">Last Run:</span> 2026-06-05T18:34:25+0800</p>
     <p><span class="label">Error:</span></p>
     <pre>
-      java.lang.NoSuchMethodError: 'org.apache.flink.table.catalog.CatalogTable$Builder org.apache.flink.table.catalog.CatalogTable.newBuilder()'
+      TM pod exited without output
+    </pre>
+  </div>
+</details>
+
+<details class="fail-card">
+  <summary>1.20.4 &times; kubernetes-application &mdash; 🔴 TM pod exited without output</summary>
+  <div class="body">
+    <p><span class="label">Error Type:</span> 🔴 Runtime Error</p>
+    <p><span class="label">Last Run:</span> 2026-06-05T18:37:29+0800</p>
+    <p><span class="label">Error:</span></p>
+    <pre>
+      TM pod exited without output
     </pre>
   </div>
 </details>

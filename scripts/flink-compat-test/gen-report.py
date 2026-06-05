@@ -135,7 +135,7 @@ def latest_timestamp(result: Optional[dict]) -> str:
     if result is None:
         return ""
     latest = result.get("latest", {})
-    ts = latest.get("timestamp", "")
+    ts = latest.get("datetime", "")
     # 将 ISO 时间戳转换为本地可读格式：YYYY-MM-DD HH:MM
     if ts:
         try:
@@ -438,8 +438,7 @@ def generate_report(versions: list[str]) -> str:
         for mode_key, _ in MODES:
             result = load_result(version, mode_key)
             status = status_of(result)
-            ts = latest_timestamp(result)
-            lines.append(f'      <td align="center">{_status_cell(status, ts)}</td>')
+            lines.append(f'      <td align="center">{_status_cell(status, "")}</td>')
             if status == "FAIL":
                 failures.append((version, mode_key, error_of(result)))
         lines.append("    </tr>")
@@ -463,7 +462,7 @@ def generate_report(versions: list[str]) -> str:
         lines.append("")
         for version, mode, error in failures:
             result = load_result(version, mode)
-            ts = result.get("latest", {}).get("timestamp", "unknown") if result else "unknown"
+            ts = result.get("latest", {}).get("datetime", "unknown") if result else "unknown"
             error_type = classify_error(error)
             err_emoji = error_type.split()[0] if error_type else "🔴"
             exc_class = extract_exception_class(error)
@@ -480,25 +479,12 @@ def generate_report(versions: list[str]) -> str:
             )
             lines.append(f'    <p><span class="label">Last Run:</span> {html_escape(ts)}</p>')
 
-            # 格式化命令
-            jar_name = _CFG.get("app_jar", "flink-sql-bootstrap-1.0-SNAPSHOT.jar").split("/")[-1]
-            test_script = _CFG.get("test_script", "classpath:example-word-count.sql")
-            formatted_cmd = _format_cmd(version, mode, jar_name, test_script)
-            escaped_cmd = (
-                formatted_cmd
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-            )
-            lines.append(f'    <p><span class="label">Command:</span></p>')
-            lines.append(f'    <div class="cmd">{escaped_cmd}</div>')
             lines.append('    <p><span class="label">Error:</span></p>')
             lines.append("    <pre>")
             if error:
-                for line in error.split("\n")[:10]:
-                    # 对 HTML 特殊字符进行转义，确保安全嵌入
+                for line in error.split("\n"):
                     escaped = (
-                        line[:200]
+                        line
                         .replace("&", "&amp;")
                         .replace("<", "&lt;")
                         .replace(">", "&gt;")

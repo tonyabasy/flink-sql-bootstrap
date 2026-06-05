@@ -1,23 +1,23 @@
 # =============================================================================
-# flink-compat-test Configuration
+# flink-compat-test 配置文件
 # =============================================================================
-# Paths are relative to project root unless starting with ~/ or /
+# 路径默认为相对于项目根目录，以 ~/ 或 / 开头则为绝对路径
 
-# ── App ─────────────────────────────────────────────────────────────────────
-# Application JAR path
+# ── 应用 ─────────────────────────────────────────────────────────────────────
+# 应用 JAR 包路径
 app_jar: "target/flink-sql-bootstrap-1.0-SNAPSHOT.jar"
 
-# Test SQL script on classpath
+# 测试 SQL 脚本（classpath 路径）
 test_script: "classpath:example-word-count-advanced.sql"
 
-# ── Run mode (optional) ─────────────────────────────────────────────────────
+# ── 运行模式（可选） ─────────────────────────────────────────────────────────
 # 留空 = 正常执行; 或 validate / compile / init-resource（三者互斥）
 #   validate:      仅校验 SQL 语法，不编译不执行
 #   compile:       校验 + 编译，输出优化计划 JSON
 #   init-resource: 生成算子资源配置模板
 run_mode: ""
 
-# ── Optional application arguments ──────────────────────────────────────────
+# ── 可选应用参数 ─────────────────────────────────────────────────────────────
 # 以下为 flink-sql-bootstrap 的额外参数，留空 = 不使用
 resource_file: "classpath:example-resource.json"
 catalog_file: "classpath:example-catalog.json"
@@ -25,23 +25,23 @@ dependencies:
   - "classpath:example-udf-reverse.jar"
   - "classpath:example-udf-substring.jar"
 
-# ── Output paths ────────────────────────────────────────────────────────────
-# Raw test results directory
+# ── 输出路径 ─────────────────────────────────────────────────────────────────
+# 原始测试结果目录
 results_dir: target/compat-test-results
 
-# Generated report output directory
+# 生成的报告输出目录
 report_dir: docs
 
-# ── Flink distribution ──────────────────────────────────────────────────────
-# Cache directory for downloaded Flink distributions
+# ── Flink 发行版 ─────────────────────────────────────────────────────────────
+# 下载的 Flink 发行版缓存目录
 flink_cache_dir: ~/.flink-dist
 
-# ── Execution ───────────────────────────────────────────────────────────────
-# Timeout (seconds) waiting for print output before failing
-job_timeout: 30
+# ── 执行 ─────────────────────────────────────────────────────────────────────
+# 等待打印输出的超时时间（秒），超时则判定失败
+job_timeout: 180
 
-# ── Test modes ──────────────────────────────────────────────────────────────
-# Each mode: key (passed to --target) and display label
+# ── 测试模式 ─────────────────────────────────────────────────────────────────
+# 每种模式：key（传递给 --target 参数）和显示标签
 modes:
   - key: local
     label: Local

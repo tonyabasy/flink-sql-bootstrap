@@ -132,10 +132,10 @@ get_all_versions() {
 get_version_field() {
   local target_version="$1"
   local field="$2"
-  grep -A 10 "^  - version: \"${target_version}\"" "${SCRIPT_DIR}/versions.yaml" \
-    | grep "^    ${field}:" \
+  grep -A 10 "version: \"${target_version}\"" "${SCRIPT_DIR}/versions.yaml" \
+    | grep "${field}:" \
     | head -1 \
-    | sed 's/^    '"${field}"': "//; s/"$//'
+    | sed 's/.*'"${field}"':[[:space:]]*"//; s/"[[:space:]]*$//'
 }
 
 # ── Flink 分发包管理 ─────────────────────────────────────────────────────────
@@ -146,33 +146,52 @@ ensure_flink() {
 
   if [[ -d "${flink_home}" ]]; then
     log_info "Cache hit: flink-${version}"
-    echo "${flink_home}"
-    return 0
+  else
+    local download_url base_url
+    base_url=$(grep "^download_base_url:" "${SCRIPT_DIR}/versions.yaml" | head -1 | sed 's/^download_base_url:[[:space:]]*//; s/^"//; s/"$//')
+    download_url=$(get_version_field "${version}" "download_url")
+    download_url="${base_url}${download_url}"
+
+    if [[ -z "${download_url}" ]]; then
+      log_error "No download_url found for version ${version} in versions.yaml"
+      return 1
+    fi
+
+    log_info "Downloading flink-${version} from ${download_url} ..."
+    mkdir -p "${FLINK_DIST_CACHE}"
+    local tmp_tgz="${FLINK_DIST_CACHE}/flink-${version}.tgz"
+
+    curl -fSL --progress-bar -C - \
+      --retry 3 --retry-delay 5 \
+      -o "${tmp_tgz}" "${download_url}" || {
+      log_error "Download failed for flink-${version}"
+      rm -f "${tmp_tgz}"
+      return 1
+    }
+
+    tar -xzf "${tmp_tgz}" -C "${FLINK_DIST_CACHE}" || {
+      log_error "Extraction failed for flink-${version}"
+      rm -f "${tmp_tgz}"
+      return 1
+    }
+    mv "${FLINK_DIST_CACHE}/flink-${version}" "${flink_home}" 2>/dev/null || true
+    rm -f "${tmp_tgz}"
+
+    log_info "Extracted to ${flink_home}"
   fi
 
-  local download_url base_url
-  base_url=$(grep "^download_base_url:" "${SCRIPT_DIR}/versions.yaml" | head -1 | sed 's/^download_base_url:[[:space:]]*//; s/^"//; s/"$//')
-  download_url=$(get_version_field "${version}" "download_url")
-  download_url="${base_url}${download_url}"
-
-  if [[ -z "${download_url}" ]]; then
-    log_error "No download_url found for version ${version} in versions.yaml"
-    return 1
+  # 将 flink-sql-gateway 从 opt/ 复制到 lib/（如果不在 lib/ 中）
+  if ! find "${flink_home}/lib/" -maxdepth 1 -name 'flink-sql-gateway-*.jar' | grep -q .; then
+    local gateway_jar
+    gateway_jar=$(find "${flink_home}/opt/" -maxdepth 1 -name 'flink-sql-gateway-*.jar' 2>/dev/null | head -1)
+    if [[ -n "${gateway_jar}" ]]; then
+      log_info "Copying $(basename "${gateway_jar}") from opt/ to lib/ ..."
+      cp "${gateway_jar}" "${flink_home}/lib/"
+    else
+      log_warn "flink-sql-gateway JAR not found in ${flink_home}/opt/"
+    fi
   fi
 
-  log_info "Downloading flink-${version} ..."
-  mkdir -p "${FLINK_DIST_CACHE}"
-  local tmp_tgz="${FLINK_DIST_CACHE}/flink-${version}.tgz"
-
-  curl -fsSL --retry 3 --retry-delay 5 \
-    -o "${tmp_tgz}" "${download_url}"
-
-  tar -xzf "${tmp_tgz}" -C "${FLINK_DIST_CACHE}"
-  # Apache 压缩包解压到 flink-X.Y.Z/
-  mv "${FLINK_DIST_CACHE}/flink-${version}" "${flink_home}" 2>/dev/null || true
-  rm -f "${tmp_tgz}"
-
-  log_info "Extracted to ${flink_home}"
   echo "${flink_home}"
 }
 
@@ -189,8 +208,8 @@ record_result() {
 
   mkdir -p "${RESULTS_RAW}"
   local result_file="${RESULTS_RAW}/${version}_${mode}.json"
-  local timestamp
-  timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local datetime
+  datetime=$(date +"%Y-%m-%dT%H:%M:%S%z")
 
   local cmd_escaped
   cmd_escaped=$(echo "${cmd}" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' 2>/dev/null || echo '""')
@@ -211,7 +230,7 @@ with open(path) as f:
     data = json.load(f)
 
 entry = {
-    'timestamp': '${timestamp}',
+    'datetime': '${datetime}',
     'status': '${status}',
     'duration_s': ${duration},
     'error': error_msg.strip(),
@@ -230,6 +249,53 @@ with open(path, 'w') as f:
     FAIL) log_error   "flink-${version} × ${mode} → FAIL: ${error_msg}" ;;
     SKIP) log_warn    "flink-${version} × ${mode} → SKIP: ${error_msg}" ;;
   esac
+}
+
+# ── 通用工具 ─────────────────────────────────────────────────────────────────
+
+# 检查进程是否存活
+_is_alive() {
+  local pid="$1"
+  kill -0 "${pid}" 2>/dev/null
+}
+
+# 终止进程并等待其退出
+_wait_kill() {
+  local pid="$1"
+  kill "${pid}" 2>/dev/null
+  wait "${pid}" 2>/dev/null || true
+}
+
+# 记录当前时间与入参的差值到 LAST_DURATION
+_set_duration() {
+  local start_ts="$1"
+  local end_ts
+  end_ts=$(date +%s)
+  LAST_DURATION=$((end_ts - start_ts))
+}
+
+# 从日志文件提取错误信息（保留换行，供 HTML <pre> 展示）
+# 用法：_extract_errors <log_file> [max_lines]
+_extract_errors() {
+  local log_file="$1"
+  local max_lines="${2:-50}"
+  grep -E "Exception|Error|FATAL|Caused by" "${log_file}" 2>/dev/null \
+    | head -"${max_lines}" | sed 's/"/\\"/g'
+}
+
+# 生成带时间戳的日志文件路径
+_log_path() {
+  echo "${RESULTS_RAW}/logs/${1}_${2}_$(date +%Y%m%d_%H%M%S).log"
+}
+
+# Flink 1.x Application 模式须用 run-application 子命令（YARN & K8s）
+_flink_subcmd() {
+  local version="$1" mode="$2"
+  if [[ "${mode}" =~ (yarn|kubernetes)-application && "${version%%.*}" == "1" ]]; then
+    echo "run-application"
+  else
+    echo "run"
+  fi
 }
 
 # ── 超时执行与输出捕获 ───────────────────────────────────────────────────────
@@ -252,9 +318,8 @@ run_flink_job() {
   local log_file="${log_dir}/${version}_${mode}_$(date +%Y%m%d_%H%M%S).log"
   local test_script="${TEST_SCRIPT:-classpath:example-word-count.sql}"
 
-  # 构建命令（流式任务不会自行终止）
   local cmd=(
-    "${flink_home}/bin/flink" run
+    "${flink_home}/bin/flink" "$(_flink_subcmd "${version}" "${mode}")"
     --target "${mode}"
     -Dpipeline.name="compat-test-${version}-${mode}"
     -Dexecution.attached=true
@@ -274,16 +339,13 @@ run_flink_job() {
     # 干跑模式（validate/compile/init-resource）——进程自行退出
     "${cmd[@]}" > "${log_file}" 2>&1
     local exit_code=$?
-    local end_ts
-    end_ts=$(date +%s)
-    LAST_DURATION=$((end_ts - start_ts))
+    _set_duration "${start_ts}"
     if [[ ${exit_code} -eq 0 ]]; then
       LAST_ERROR=""
       log_success "${RUN_MODE} completed"
       return 0
     else
-      LAST_ERROR=$(grep -E "Exception|Error|FATAL|Caused by" "${log_file}" \
-        | head -5 | sed 's/"/\\"/g')
+      LAST_ERROR=$(_extract_errors "${log_file}")
       log_error "${RUN_MODE} failed (exit ${exit_code})"
       return 1
     fi
@@ -294,28 +356,29 @@ run_flink_job() {
 
   local elapsed=0
   while ((elapsed < JOB_TIMEOUT)); do
-    if ! kill -0 "$flink_pid" 2>/dev/null; then
-      # 进程提前退出——一般是失败
-      wait "$flink_pid" 2>/dev/null
-      local end_ts
-      end_ts=$(date +%s)
-      LAST_DURATION=$((end_ts - start_ts))
-      LAST_ERROR=$(grep -E "Exception|Error|FATAL|Caused by" "${log_file}" \
-        | head -5 | sed 's/"/\\"/g')
-      log_error "Job exited during init"
-      return 1
+    # 先检查输出再检查进程——有界流（number-of-rows）会在输出后立即退出
+    if grep -qF '+I[' "${log_file}" 2>/dev/null; then
+      _set_duration "${start_ts}"
+      LAST_ERROR=""
+      _wait_kill "$flink_pid"
+      log_success "Print output detected, job completed"
+      return 0
     fi
 
-    # 出现打印输出 +I[...] 表示管道已成功运行
-    if grep -qF '+I[' "${log_file}" 2>/dev/null; then
-      local end_ts
-      end_ts=$(date +%s)
-      LAST_DURATION=$((end_ts - start_ts))
-      LAST_ERROR=""
-      kill "$flink_pid" 2>/dev/null
-      wait "$flink_pid" 2>/dev/null || true
-      log_success "Print output detected, job cancelled"
-      return 0
+    if ! _is_alive "$flink_pid"; then
+      # 进程退出了——先检查是否有输出（有界流正常完成）
+      if grep -qF '+I[' "${log_file}" 2>/dev/null; then
+        wait "$flink_pid" 2>/dev/null
+        _set_duration "${start_ts}"
+        LAST_ERROR=""
+        log_success "Print output detected, job completed"
+        return 0
+      fi
+      wait "$flink_pid" 2>/dev/null
+      _set_duration "${start_ts}"
+      LAST_ERROR=$(_extract_errors "${log_file}")
+      log_error "Job exited during init"
+      return 1
     fi
 
     sleep 2
@@ -323,13 +386,9 @@ run_flink_job() {
   done
 
   # 超时——终止并标记失败
-  kill "$flink_pid" 2>/dev/null
-  wait "$flink_pid" 2>/dev/null || true
-  local end_ts
-  end_ts=$(date +%s)
-  LAST_DURATION=$((end_ts - start_ts))
-  LAST_ERROR=$(grep -E "Exception|Error|FATAL|Caused by" "${log_file}" \
-    | head -5 | tr '\n' ' ' | sed 's/"/\\"/g')
+  _wait_kill "$flink_pid"
+  _set_duration "${start_ts}"
+  LAST_ERROR=$(_extract_errors "${log_file}")
   [[ -z "${LAST_ERROR}" ]] && LAST_ERROR="No print output within ${JOB_TIMEOUT}s"
   log_error "No print output within ${JOB_TIMEOUT}s"
   return 1
