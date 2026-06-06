@@ -24,7 +24,7 @@
 
 | 维度 | 说明 |
 |------|------|
-| Flink 版本 | 1.17.2, 1.18.1, 1.19.3, 1.20.4, 2.0.2, 2.1.1, 2.2.0 |
+| Flink 版本 | 1.20.4, 2.0.2, 2.1.1, 2.2.0 |
 | 部署模式 | Local、YARN Application、YARN Session、K8s Session、K8s Application |
 | 测试方式 | 完整执行、Validate、Compile、Init-Resource 四种运行模式 |
 

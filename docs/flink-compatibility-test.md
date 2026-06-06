@@ -24,7 +24,7 @@ Core value of this tool:
 
 | Dimension | Description |
 |-----------|-------------|
-| Flink versions | 1.17.2, 1.18.1, 1.19.3, 1.20.4, 2.0.2, 2.1.1, 2.2.0 |
+| Flink versions | 1.20.4, 2.0.2, 2.1.1, 2.2.0 |
 | Deployment modes | Local, YARN Application, YARN Session, K8s Session, K8s Application |
 | Test modes | Full execution, Validate, Compile, Init-Resource |
 

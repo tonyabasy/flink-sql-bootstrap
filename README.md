@@ -64,17 +64,14 @@ Native Flink SQL has three pain points in production:
 
 ## Flink Version Compatibility
 
-Verified via the [compatibility test suite](docs/flink-compatibility-test.md) (Local mode, 2026-06-03):
+Verified via the [compatibility test suite](docs/flink-compatibility-test.md) on Local, YARN (docker-compose), and Kubernetes (kind). All modes tested with UDF dependencies, Catalog snapshots, and resource hints.
 
 | Flink Version | Local | YARN-App | YARN-Session | K8s-Session | K8s-App |
 |---------------|:-----:|:--------:|:------------:|:-----------:|:-------:|
-| 1.17.2 | ❌ | — | — | — | — |
-| 1.18.1 | ❌ | — | — | — | — |
-| 1.19.3 | ❌ | — | — | — | — |
-| 1.20.4 | ✅ | — | — | — | — |
-| 2.0.2 | ✅ | — | — | — | — |
-| 2.1.1 | ✅ | — | — | — | — |
-| 2.2.0 | ✅ | — | — | — | — |
+| 1.20.4 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 2.0.2 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 2.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 2.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 - **✅ PASS** — JAR submits and executes successfully.
 - **❌ FAIL** — API incompatibility prevents job submission or execution.

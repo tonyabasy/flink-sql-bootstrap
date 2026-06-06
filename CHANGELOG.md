@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Operator resource configuration example ([`example-resource.json`](src/main/resources/example-resource.json)).
 - Sample UDF JARs (`example-udf-reverse.jar`, `example-udf-substring.jar`).
 - AI Agent collaboration guidelines (`docs/agents/`).
-- Flink multi-version compatibility test suite (`scripts/flink-cmp-test/`) — automated testing across Flink 1.17 ~ 2.2 in Local, YARN, and Kubernetes deployment modes. Generates HTML compatibility reports (`docs/flink-cmp-test-<version>.html`) with pass/fail matrix and error classification.
+- Flink multi-version compatibility test suite (`scripts/flink-compat-test/`) — automated testing across Flink 1.20 ~ 2.2 in Local, YARN, and Kubernetes deployment modes. Generates HTML compatibility reports (`docs/flink-compat-test-<version>.html`) with pass/fail matrix and error classification.
 
-- **YARN** and **Kubernetes** deployment modes are not yet tested (marked as NT in reports).
+- All 5 deployment modes (Local, YARN-App, YARN-Session, K8s-Session, K8s-App) tested and passing.
 - Full compatibility report: [docs/flink-compat-test-1.0-SNAPSHOT.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0-SNAPSHOT.html)

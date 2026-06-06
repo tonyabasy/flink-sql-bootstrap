@@ -35,19 +35,23 @@ done
 
 # ── Kind 集群管理 ────────────────────────────────────────────────────────────
 start_kind_cluster() {
-  # 先清理可能的旧集群，保证幂等
+  # 集群 + namespace 已存在则跳过重建
+  if kind get clusters 2>/dev/null | grep -qx "${KIND_CLUSTER}" \
+    && kubectl get ns "${K8S_NAMESPACE}" --context "kind-${KIND_CLUSTER}" >/dev/null 2>&1; then
+    kubectl config use-context "kind-${KIND_CLUSTER}"
+    log_info "Kind cluster '${KIND_CLUSTER}' + namespace '${K8S_NAMESPACE}' already ready, skipping creation"
+    return 0
+  fi
+
   delete_kind_cluster
   log_info "Creating Kind cluster '${KIND_CLUSTER}' ..."
   kind create cluster \
     --name "${KIND_CLUSTER}" \
     --config "${KIND_CONFIG}" \
     --wait 60s
-  # 限制节点容器内存（Kind 不支持 YAML 直接设，只能 docker update）
   docker update --memory 4g --memory-swap 4g "${KIND_CLUSTER}-control-plane" 2>/dev/null || true
   kubectl config use-context "kind-${KIND_CLUSTER}"
   kubectl create namespace "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-
-  # 授予 Flink JobManager 所需的 RBAC 权限（default SA 需要管理 Pod/Service/ConfigMap）
   _apply_flink_rbac
 }
 
@@ -192,61 +196,74 @@ test_k8s_session() {
 }
 
 # ── 测试：kubernetes-application ─────────────────────────────────────────────
+# Application 模式无法从客户端拿 +I[，改为后台抓 TM 日志 grep 判定。
 test_k8s_application() {
   local version="$1" flink_home="$2" image_tag="$3"
-
   local cluster_id="compat-app-${version//./-}"
   local submit_pod="compat-submit-${cluster_id}"
-  local job_log=$(_log_path "${version}" "kubernetes-application")
-  mkdir -p "${RESULTS_RAW}/logs"
-
-  # 通过 Pod 在集群内提交 Application 模式任务（--attach --rm 阻塞到结束）
-  log_info "Submitting K8s Application job via pod ${submit_pod} ..."
-  local run_cmd=(
-    kubectl run "${submit_pod}"
-    --namespace="${K8S_NAMESPACE}"
-    --image="${image_tag}"
-    --image-pull-policy=IfNotPresent
-    --restart=Never
-    --attach --rm
-    --command --
-    /opt/flink/bin/flink run
-    --target kubernetes-application
-    -Dkubernetes.cluster-id="${cluster_id}"
-    -Dkubernetes.namespace="${K8S_NAMESPACE}"
-    -Dkubernetes.container.image="${image_tag}"
-    -Dkubernetes.container.image-pull-policy=IfNotPresent
-    -Dkubernetes.jobmanager.cpu=0.5
-    -Dtaskmanager.numberOfTaskSlots=2
-    -Djobmanager.memory.process.size=1g
-    -Dtaskmanager.memory.process.size=2g
-    -Dpipeline.name="compat-test-${version}-kubernetes-application"
-    -Dexecution.attached=true
-    -C file:///opt/flink/usrlib/example-udf-reverse.jar
-    -C file:///opt/flink/usrlib/example-udf-substring.jar
-    /opt/flink/usrlib/app.jar
-    --script-file "${TEST_SCRIPT}"
-    ${APP_ARGS[@]+"${APP_ARGS[@]}"}
-  )
-  log_info "${run_cmd[*]}"
+  local tm_log="${RESULTS_RAW}/logs/${version}_kubernetes-application_tm.log"
+  mkdir -p "$(dirname "${tm_log}")"
 
   local start_ts=$(date +%s)
-  "${run_cmd[@]}" > "${job_log}" 2>&1
-  LAST_DURATION=$(( $(date +%s) - start_ts ))
+  local job_log=$(_log_path "${version}" "kubernetes-application")
 
-  local result=0
-  if grep -qF '+I[' "${job_log}" 2>/dev/null; then
-    record_result "${version}" "kubernetes-application" "PASS" "" "${LAST_DURATION}"
-    _cleanup_cluster "${cluster_id}" "${submit_pod}"
-  else
-    LAST_ERROR=$(_extract_errors "${job_log}")
-    [[ -z "${LAST_ERROR}" ]] && LAST_ERROR="No print output from job"
-    record_result "${version}" "kubernetes-application" "FAIL" "${LAST_ERROR}" "${LAST_DURATION}"
-    result=1
-    log_info "Test failed — keeping K8s Application cluster for investigation"
-    log_info "  Clean up manually: kubectl delete deployment ${cluster_id} -n ${K8S_NAMESPACE}"
-  fi
-  return ${result}
+  # 1. 提交
+  kubectl run "${submit_pod}" --namespace="${K8S_NAMESPACE}" \
+    --image="${image_tag}" --image-pull-policy=IfNotPresent \
+    --restart=Never --attach --rm --command -- \
+    /opt/flink/bin/flink $(_flink_subcmd "${version}" "kubernetes-application") --target kubernetes-application \
+    -Dkubernetes.cluster-id="${cluster_id}" \
+    -Dkubernetes.namespace="${K8S_NAMESPACE}" \
+    -Dkubernetes.container.image="${image_tag}" \
+    -Dkubernetes.jobmanager.cpu=0.5 \
+    -Dtaskmanager.numberOfTaskSlots=2 \
+    -Djobmanager.memory.process.size=1g \
+    -Dtaskmanager.memory.process.size=2g \
+    -Dpipeline.name="compat-test-${version}-kubernetes-application" \
+    -C file:///opt/flink/usrlib/example-udf-reverse.jar \
+    -C file:///opt/flink/usrlib/example-udf-substring.jar \
+    /opt/flink/usrlib/app.jar \
+    --script-file "${TEST_SCRIPT}" \
+    ${APP_ARGS[*]} \
+    > "${job_log}" 2>&1 || {
+      LAST_DURATION=$(( $(date +%s) - start_ts ))
+      LAST_ERROR=$(_extract_errors "${job_log}")
+      record_result "${version}" "kubernetes-application" "FAIL" \
+        "${LAST_ERROR:-Submission failed}" "${LAST_DURATION}"
+      return 1
+    }
+
+  # 2. 后台抓 TM 日志（重试到 ContainerRunning）
+  (
+    local _tm="" _e=0
+    while [[ -z "${_tm}" && ${_e} -lt 60 ]]; do
+      _tm=$(kubectl get pods -n "${K8S_NAMESPACE}" \
+        -l "component=taskmanager" \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+      [[ -n "${_tm}" ]] && break
+      sleep 1; ((_e++))
+    done
+    [[ -n "${_tm}" ]] && while true; do
+      kubectl logs -n "${K8S_NAMESPACE}" "${_tm}" -f 2>/dev/null; sleep 1
+    done
+  ) > "${tm_log}" 2>&1 &
+
+  # 3. 轮询 +I[
+  local elapsed=0
+  while ((elapsed < JOB_TIMEOUT)); do
+    if grep -qF '+I[' "${tm_log}" 2>/dev/null; then
+      LAST_DURATION=$(( $(date +%s) - start_ts ))
+      record_result "${version}" "kubernetes-application" "PASS" "" "${LAST_DURATION}"
+      _cleanup_cluster "${cluster_id}" "${submit_pod}"
+      return 0
+    fi
+    sleep 2; ((elapsed += 2))
+  done
+
+  LAST_DURATION=$(( $(date +%s) - start_ts ))
+  record_result "${version}" "kubernetes-application" "FAIL" \
+    "No +I[ output within ${JOB_TIMEOUT}s" "${LAST_DURATION}"
+  return 1
 }
 
 # ── 主流程 ───────────────────────────────────────────────────────────────────
