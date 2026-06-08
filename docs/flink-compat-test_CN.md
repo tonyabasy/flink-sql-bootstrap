@@ -1,6 +1,6 @@
 # Flink 多版本兼容性测试
 
-验证 `flink-sql-bootstrap` 构建的 JAR 在 Flink 1.17 ~ 2.2 多个版本及不同部署模式下的兼容性。
+验证 `flink-sql-bootstrap` 构建的 JAR 在 Flink 1.20 ~ 2.2 多个版本及不同部署模式下的兼容性。
 
 设计目标：**新增一个 Flink 版本，只需在 `versions.yaml` 追加一行配置，其余无需改动。**
 
@@ -42,8 +42,8 @@ scripts/flink-compat-test/
 ├── test-k8s.sh          # K8s 模式测试
 └── gen-report.py        # HTML 报告生成器
 
-results/raw/             # JSON 原始结果（保留最近 20 条历史）
-docs/flink-compat-test-<version>.html   # 兼容性报告
+target/compat-test-results/raw/          # JSON 原始结果（保留最近 20 条历史）
+docs/flink-compat-test-<version>.html   # 兼容性报告（由 gen-report.py 生成）
 ```
 
 ---
@@ -66,8 +66,8 @@ docs/flink-compat-test-<version>.html   # 兼容性报告
 
 **为什么按部署模式拆分脚本？**
 
-- Local 模式零依赖，适合日常开发和 CI
-- YARN 模式需要 Docker Compose 启动伪集群，K8s 模式需要 kind，环境准备逻辑差异大
+- Local 模式零外部依赖，适合日常开发和 CI
+- YARN 模式需要 Docker Compose 启动伪集群，K8s 模式需要 kind + kubectl，环境准备逻辑差异大
 - 拆分后每个脚本职责单一，失败时定位更快
 
 ### 核心流程
@@ -85,7 +85,7 @@ versions.yaml ──→ common.sh 读取版本列表
                       │
                       ▼
               检测 Job 输出（+I[ 表示成功）
-              超时（默认 30s）未检测到 → FAIL
+              超时（默认 180s，可通过 config.yaml 调整）未检测到 → FAIL
                       │
                       ▼
               结果写入 results/raw/<version>_<mode>.json
@@ -102,6 +102,15 @@ versions.yaml ──→ common.sh 读取版本列表
 1. `flink run` 命令成功提交 Job（无提交期异常）
 2. Job 运行时产生预期的 Sink 输出（检测到 `+I[` 前缀，说明 datagen → print 链路跑通）
 3. 在 `job_timeout` 秒内完成上述验证
+
+**不同部署模式检测 `+I[` 的方式不同：**
+
+| 部署模式 | 检测方式 | 说明 |
+|----------|---------|------|
+| Local | 客户端 stdout `+I[` | 本地进程输出直接捕获 |
+| YARN Session / Application | Flink REST API | 轮询 YARN RM proxy 获取 Job 状态（FINISHED → PASS，FAILED → FAIL） |
+| K8s Session | TaskManager 容器日志 `+I[` | 后台 `kubectl logs -f` 抓取 TM 日志流，轮询检测输出 |
+| K8s Application | TaskManager 容器日志 `+I[` | 同上 |
 
 判定为 **FAIL** 的情况包括：
 - 提交期异常（`ClassNotFoundException`、`NoSuchMethodError` 等 API 不兼容）
@@ -176,15 +185,15 @@ python3 scripts/flink-compat-test/gen-report.py
 
 ### 新增 Flink 版本
 
-编辑 `versions.yaml`，追加一行即可：
+编辑 `versions.yaml`，在 `flink_versions:` 下追加一项即可：
 
 ```yaml
-  - version: "2.3.0"
-    java: "17"
-    download_url: "https://archive.apache.org/dist/flink/flink-2.3.0/flink-2.3.0-bin-scala_2.12.tgz"
+ - version: "2.3.0"
+   java: "17"
+   download_url: "flink-2.3.0/flink-2.3.0-bin-scala_2.12.tgz"
 ```
 
-`common.sh` 会自动解析并纳入测试范围。
+`download_url` 为相对路径，会与文件顶部的 `download_base_url` 拼接使用。`common.sh` 会自动解析并纳入测试范围。
 
 ### 调整测试参数
 
@@ -193,8 +202,8 @@ python3 scripts/flink-compat-test/gen-report.py
 | 配置项 | 说明 |
 |--------|------|
 | `app_jar` | 被测 JAR 路径（支持相对项目根目录或绝对路径） |
-| `test_script` | 测试 SQL 脚本，默认 `classpath:example-word-count.sql` |
-| `job_timeout` | 等待 Job 输出超时秒数，默认 30 |
+| `test_script` | 测试 SQL 脚本，默认 `classpath:example-word-count-advanced.sql` |
+| `job_timeout` | 等待 Job 输出超时秒数，默认 `180`（未配置时回退到 `30`） |
 | `run_mode` | 空字符串为完整执行；`validate` / `compile` / `init-resource` 为干运行 |
 | `modes` | 启用的部署模式列表 |
 | `dependencies` | 额外依赖 JAR（如 UDF） |

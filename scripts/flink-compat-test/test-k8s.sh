@@ -102,6 +102,7 @@ _start_session_cluster() {
   local session_log=$(_log_path "${version}" "kubernetes-session_cluster")
 
   log_info "Starting K8s Session cluster ${cluster_id} ..."
+  local s_cmd="${flink_home}/bin/kubernetes-session.sh -Dkubernetes.cluster-id=${cluster_id} -Dkubernetes.namespace=${K8S_NAMESPACE} -Dkubernetes.container.image=${image_tag} -Dkubernetes.jobmanager.cpu=0.5 -Dtaskmanager.numberOfTaskSlots=2 -Djobmanager.memory.process.size=1g -Dtaskmanager.memory.process.size=3g -Dexecution.target=kubernetes-session --detached"
   "${flink_home}/bin/kubernetes-session.sh" \
     -Dkubernetes.cluster-id="${cluster_id}" \
     -Dkubernetes.namespace="${K8S_NAMESPACE}" \
@@ -114,7 +115,7 @@ _start_session_cluster() {
     -Dexecution.target=kubernetes-session \
     --detached > "${session_log}" 2>&1 || {
     local err; err=$(_extract_errors "${session_log}" 3)
-    record_result "${version}" "kubernetes-session" "FAIL" "Session start failed: ${err}" 0
+    record_result "${version}" "kubernetes-session" "FAIL" "Session start failed: ${err}" 0 "${s_cmd}"
     return 1
   }
 
@@ -124,7 +125,7 @@ _start_session_cluster() {
     -n "${K8S_NAMESPACE}" \
     --for=condition=Ready \
     --timeout=120s >/dev/null 2>&1 || {
-    record_result "${version}" "kubernetes-session" "FAIL" "JobManager pod not ready within 120s" 0
+    record_result "${version}" "kubernetes-session" "FAIL" "JobManager pod not ready within 120s" 0 "${s_cmd}"
     kubectl delete deployment "${cluster_id}" -n "${K8S_NAMESPACE}" 2>/dev/null || true
     return 1
   }
@@ -146,12 +147,13 @@ test_k8s_session() {
   local cluster_id="compat-session-${version//./-}"
   local submit_pod="compat-submit-${cluster_id}"
   local job_log=$(_log_path "${version}" "kubernetes-session")
+  local tm_log=$(_log_path "${version}" "kubernetes-session_tm")
   mkdir -p "${RESULTS_RAW}/logs"
 
   # 1. 启动 Session 集群
   _start_session_cluster "${version}" "${flink_home}" "${image_tag}" "${cluster_id}" || return 1
 
-  # 2. 通过 Pod 在集群内提交任务（flink run --attached 阻塞到任务结束）
+  # 2. 后台提交任务（flink run --attached 阻塞到任务结束）
   log_info "Submitting job via pod ${submit_pod} ..."
   local run_cmd=(
     kubectl run "${submit_pod}"
@@ -174,24 +176,83 @@ test_k8s_session() {
     ${APP_ARGS[@]+"${APP_ARGS[@]}"}
   )
   log_info "${run_cmd[*]}"
+  LAST_CMD="${run_cmd[*]}"
 
   local start_ts=$(date +%s)
-  "${run_cmd[@]}" > "${job_log}" 2>&1
-  LAST_DURATION=$(( $(date +%s) - start_ts ))
 
-  # 3. 判定结果（stdout 中必有 +I[ 输出）
+  # 后台执行提交命令
+  "${run_cmd[@]}" > "${job_log}" 2>&1 &
+  local submit_pid=$!
+
+  # 3. 后台抓 TM 日志（等待 TM Pod 出现）
+  (
+    local _tm="" _e=0
+    while [[ -z "${_tm}" && ${_e} -lt 60 ]]; do
+      _tm=$(kubectl get pods -n "${K8S_NAMESPACE}" \
+        -l "app=${cluster_id},component=taskmanager" \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+      [[ -n "${_tm}" ]] && break
+      sleep 1; ((_e++))
+    done
+    [[ -n "${_tm}" ]] && while true; do
+      kubectl logs -n "${K8S_NAMESPACE}" "${_tm}" -f 2>/dev/null; sleep 1
+    done
+  ) > "${tm_log}" 2>&1 &
+  local tm_log_pid=$!
+
+  # 4. 轮询 TM 日志中的 +I[ 输出
   local result=0
-  if grep -qF '+I[' "${job_log}" 2>/dev/null; then
-    record_result "${version}" "kubernetes-session" "PASS" "" "${LAST_DURATION}"
-    _cleanup_cluster "${cluster_id}" "${submit_pod}"
-  else
-    LAST_ERROR=$(_extract_errors "${job_log}")
-    [[ -z "${LAST_ERROR}" ]] && LAST_ERROR="No print output from job"
-    record_result "${version}" "kubernetes-session" "FAIL" "${LAST_ERROR}" "${LAST_DURATION}"
-    result=1
-    log_info "Test failed — keeping K8s Session cluster for investigation"
-    log_info "  Clean up manually: kubectl delete deployment ${cluster_id} -n ${K8S_NAMESPACE}"
-  fi
+  local elapsed=0
+  while ((elapsed < JOB_TIMEOUT)); do
+    if grep -qF '+I[' "${tm_log}" 2>/dev/null; then
+      LAST_DURATION=$(( $(date +%s) - start_ts ))
+      record_result "${version}" "kubernetes-session" "PASS" "" "${LAST_DURATION}" "${LAST_CMD}"
+      # 终止提交进程和 TM 日志抓取
+      kill "${submit_pid}" 2>/dev/null || true
+      kill "${tm_log_pid}" 2>/dev/null || true
+      wait "${submit_pid}" 2>/dev/null || true
+      wait "${tm_log_pid}" 2>/dev/null || true
+      _cleanup_cluster "${cluster_id}" "${submit_pod}"
+      return 0
+    fi
+    # 如果提交进程已退出且无 +I[，判定失败
+    if ! kill -0 "${submit_pid}" 2>/dev/null; then
+      wait "${submit_pid}" 2>/dev/null || true
+      LAST_DURATION=$(( $(date +%s) - start_ts ))
+      # 提交进程退出后给 TM 一点时间输出
+      sleep 5
+      if grep -qF '+I[' "${tm_log}" 2>/dev/null; then
+        record_result "${version}" "kubernetes-session" "PASS" "" "${LAST_DURATION}" "${LAST_CMD}"
+        kill "${tm_log_pid}" 2>/dev/null || true
+        wait "${tm_log_pid}" 2>/dev/null || true
+        _cleanup_cluster "${cluster_id}" "${submit_pod}"
+        return 0
+      fi
+      LAST_ERROR=$(_extract_errors "${job_log}")
+      [[ -z "${LAST_ERROR}" ]] && LAST_ERROR="No print output from job"
+      record_result "${version}" "kubernetes-session" "FAIL" "${LAST_ERROR}" "${LAST_DURATION}" "${LAST_CMD}"
+      kill "${tm_log_pid}" 2>/dev/null || true
+      wait "${tm_log_pid}" 2>/dev/null || true
+      result=1
+      log_info "Test failed — keeping K8s Session cluster for investigation"
+      log_info "  Clean up manually: kubectl delete deployment ${cluster_id} -n ${K8S_NAMESPACE}"
+      return ${result}
+    fi
+    sleep 2; ((elapsed += 2))
+  done
+
+  # 超时
+  kill "${submit_pid}" 2>/dev/null || true
+  kill "${tm_log_pid}" 2>/dev/null || true
+  wait "${submit_pid}" 2>/dev/null || true
+  wait "${tm_log_pid}" 2>/dev/null || true
+  LAST_DURATION=$(( $(date +%s) - start_ts ))
+  LAST_ERROR=$(_extract_errors "${job_log}")
+  [[ -z "${LAST_ERROR}" ]] && LAST_ERROR="No print output within ${JOB_TIMEOUT}s"
+  record_result "${version}" "kubernetes-session" "FAIL" "${LAST_ERROR}" "${LAST_DURATION}" "${LAST_CMD}"
+  result=1
+  log_info "Test failed — keeping K8s Session cluster for investigation"
+  log_info "  Clean up manually: kubectl delete deployment ${cluster_id} -n ${K8S_NAMESPACE}"
   return ${result}
 }
 
@@ -201,35 +262,40 @@ test_k8s_application() {
   local version="$1" flink_home="$2" image_tag="$3"
   local cluster_id="compat-app-${version//./-}"
   local submit_pod="compat-submit-${cluster_id}"
-  local tm_log="${RESULTS_RAW}/logs/${version}_kubernetes-application_tm.log"
+  local tm_log=$(_log_path "${version}" "kubernetes-application_tm")
   mkdir -p "$(dirname "${tm_log}")"
 
   local start_ts=$(date +%s)
   local job_log=$(_log_path "${version}" "kubernetes-application")
 
   # 1. 提交
-  kubectl run "${submit_pod}" --namespace="${K8S_NAMESPACE}" \
-    --image="${image_tag}" --image-pull-policy=IfNotPresent \
-    --restart=Never --attach --rm --command -- \
-    /opt/flink/bin/flink $(_flink_subcmd "${version}" "kubernetes-application") --target kubernetes-application \
-    -Dkubernetes.cluster-id="${cluster_id}" \
-    -Dkubernetes.namespace="${K8S_NAMESPACE}" \
-    -Dkubernetes.container.image="${image_tag}" \
-    -Dkubernetes.jobmanager.cpu=0.5 \
-    -Dtaskmanager.numberOfTaskSlots=2 \
-    -Djobmanager.memory.process.size=1g \
-    -Dtaskmanager.memory.process.size=2g \
-    -Dpipeline.name="compat-test-${version}-kubernetes-application" \
-    -C file:///opt/flink/usrlib/example-udf-reverse.jar \
-    -C file:///opt/flink/usrlib/example-udf-substring.jar \
-    /opt/flink/usrlib/app.jar \
-    --script-file "${TEST_SCRIPT}" \
-    ${APP_ARGS[*]} \
-    > "${job_log}" 2>&1 || {
+  local run_cmd=(
+    kubectl run "${submit_pod}" --namespace="${K8S_NAMESPACE}"
+    --image="${image_tag}" --image-pull-policy=IfNotPresent
+    --restart=Never --attach --rm --command --
+    /opt/flink/bin/flink $(_flink_subcmd "${version}" "kubernetes-application") --target kubernetes-application
+    -Dkubernetes.cluster-id="${cluster_id}"
+    -Dkubernetes.namespace="${K8S_NAMESPACE}"
+    -Dkubernetes.container.image="${image_tag}"
+    -Dkubernetes.jobmanager.cpu=0.5
+    -Dtaskmanager.numberOfTaskSlots=2
+    -Djobmanager.memory.process.size=1g
+    -Dtaskmanager.memory.process.size=2g
+    -Dpipeline.name="compat-test-${version}-kubernetes-application"
+    -C file:///opt/flink/usrlib/example-udf-reverse.jar
+    -C file:///opt/flink/usrlib/example-udf-substring.jar
+    /opt/flink/usrlib/app.jar
+    --script-file "${TEST_SCRIPT}"
+    ${APP_ARGS[*]}
+  )
+  LAST_CMD="${run_cmd[*]}"
+  log_info "${LAST_CMD}"
+
+  "${run_cmd[@]}" > "${job_log}" 2>&1 || {
       LAST_DURATION=$(( $(date +%s) - start_ts ))
       LAST_ERROR=$(_extract_errors "${job_log}")
       record_result "${version}" "kubernetes-application" "FAIL" \
-        "${LAST_ERROR:-Submission failed}" "${LAST_DURATION}"
+        "${LAST_ERROR:-Submission failed}" "${LAST_DURATION}" "${LAST_CMD}"
       return 1
     }
 
@@ -253,7 +319,7 @@ test_k8s_application() {
   while ((elapsed < JOB_TIMEOUT)); do
     if grep -qF '+I[' "${tm_log}" 2>/dev/null; then
       LAST_DURATION=$(( $(date +%s) - start_ts ))
-      record_result "${version}" "kubernetes-application" "PASS" "" "${LAST_DURATION}"
+      record_result "${version}" "kubernetes-application" "PASS" "" "${LAST_DURATION}" "${LAST_CMD}"
       _cleanup_cluster "${cluster_id}" "${submit_pod}"
       return 0
     fi
@@ -262,7 +328,7 @@ test_k8s_application() {
 
   LAST_DURATION=$(( $(date +%s) - start_ts ))
   record_result "${version}" "kubernetes-application" "FAIL" \
-    "No +I[ output within ${JOB_TIMEOUT}s" "${LAST_DURATION}"
+    "No +I[ output within ${JOB_TIMEOUT}s" "${LAST_DURATION}" "${LAST_CMD}"
   return 1
 }
 

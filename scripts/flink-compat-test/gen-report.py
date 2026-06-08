@@ -218,9 +218,14 @@ def _status_cell(status: Optional[str], timestamp: str) -> str:
     return f"{icon} {timestamp}" if timestamp else icon
 
 
-def _format_cmd(version: str, mode: str, jar_name: str = "flink-sql-bootstrap-1.0-SNAPSHOT.jar",
-                script: str = "classpath:example-word-count.sql") -> str:
+def _format_cmd(version: str, mode: str, jar_name: Optional[str] = None,
+                script: Optional[str] = None) -> str:
     """格式化测试命令，使用 $FLINK_HOME 和反斜杠续行。"""
+    if jar_name is None:
+        app_jar = _CFG.get("app_jar", "target/flink-sql-bootstrap.jar")
+        jar_name = Path(app_jar).name
+    if script is None:
+        script = _CFG.get("test_script", "classpath:example-word-count.sql")
     lines = [
         "$FLINK_HOME/bin/flink run \\",
         f"    --target {mode} \\",

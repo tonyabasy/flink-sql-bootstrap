@@ -5,7 +5,7 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 并且本项目遵循 [语义化版本控制](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
-## [Unreleased]
+## [1.0.0] - 2026-06-08
 
 ### Added（新增）
 
@@ -42,7 +42,7 @@
 - Flink 多版本兼容性测试套件 (`scripts/flink-compat-test/`) —— 自动化测试 Flink 1.20 ~ 2.2 在 Local、YARN、Kubernetes 部署模式下的兼容性，生成 HTML 兼容性报告 (`docs/flink-compat-test-<version>.html`)，包含通过/失败矩阵和错误分类
 
 - 5 种部署模式（Local、YARN-App、YARN-Session、K8s-Session、K8s-App）全部测试通过。
-- 完整兼容性报告：[docs/flink-compat-test-1.0-SNAPSHOT.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0-SNAPSHOT.html)
+- 完整兼容性报告：[docs/flink-compat-test-1.0.0.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.0.html)
 - 提供领域术语表（[CONTEXT.md](CONTEXT.md)）
 - 提供 SQL 示例（[`example-word-count.sql`](src/main/resources/example-word-count.sql)、[`example-word-count-advanced.sql`](src/main/resources/example-word-count-advanced.sql)）
 - 提供 Catalog 快照示例（[`example-catalog.json`](src/main/resources/example-catalog.json)）

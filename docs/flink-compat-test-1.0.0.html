@@ -80,9 +80,9 @@
 <h1>Flink SQL App &mdash; Compatibility Report</h1>
 
 <div class="meta">
-<p><strong>Last updated:</strong> 2026-06-06 15:00 UTC</p>
-<p><strong>Commit:</strong> <code>b6a6d4f</code></p>
-<p><strong>Version:</strong> <code>1.0-SNAPSHOT</code></p>
+<p><strong>Last updated:</strong> 2026-06-08 03:00 UTC</p>
+<p><strong>Commit:</strong> <code>795cc5d</code></p>
+<p><strong>Version:</strong> <code>1.0.0</code></p>
 <p><strong>Java:</strong> <code>openjdk version "11.0.28" 2025-07-15 LTS</code></p>
 </div>
 
@@ -98,8 +98,8 @@
     --target local \
     -Dpipeline.name="compat-test-2.2.0-local" \
     -Dexecution.attached=true \
-    flink-sql-bootstrap-1.0-SNAPSHOT.jar \
-    --script-file classpath:example-word-count.sql \
+    flink-sql-bootstrap-1.0.0.jar \
+    --script-file classpath:example-word-count-advanced.sql \
     --resource-file classpath:example-resource.json \
     --catalog-file classpath:example-catalog.json \
     --dependency classpath:example-udf-reverse.jar \

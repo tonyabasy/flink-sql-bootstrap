@@ -5,7 +5,7 @@
 
 # ── 应用 ─────────────────────────────────────────────────────────────────────
 # 应用 JAR 包路径
-app_jar: "target/flink-sql-bootstrap-1.0-SNAPSHOT.jar"
+app_jar: "target/flink-sql-bootstrap-1.0.0.jar"
 
 # 测试 SQL 脚本（classpath 路径）
 test_script: "classpath:example-word-count-advanced.sql"
