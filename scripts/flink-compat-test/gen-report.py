@@ -270,14 +270,6 @@ def generate_report(versions: list[str]) -> str:
     """生成完整的 HTML 报告字符串。"""
     now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M UTC+8")
 
-    try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=PROJECT_ROOT, text=True, stderr=subprocess.DEVNULL
-        ).strip()
-    except Exception:
-        commit = "unknown"
-
     pom_version = get_pom_version()
     failures: list[tuple[str, str, str]] = []
 
@@ -381,7 +373,6 @@ def generate_report(versions: list[str]) -> str:
         "",
         '<div class="meta">',
         f"<p><strong>Last updated:</strong> {now}</p>",
-        f"<p><strong>Commit:</strong> <code>{commit}</code></p>",
         f"<p><strong>Version:</strong> <code>{pom_version}</code></p>",
         f"<p><strong>Java:</strong> <code>{java_version}</code></p>",
         "</div>",
