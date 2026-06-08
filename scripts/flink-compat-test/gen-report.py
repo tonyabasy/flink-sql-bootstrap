@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -268,7 +268,7 @@ def _load_sql_content() -> str:
 
 def generate_report(versions: list[str]) -> str:
     """生成完整的 HTML 报告字符串。"""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M UTC+8")
 
     try:
         commit = subprocess.check_output(
