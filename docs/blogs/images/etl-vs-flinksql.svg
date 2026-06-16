@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 340" width="100%" height="100%">
+  <title>传统 ETL vs Flink SQL 对比</title>
+  <desc>两列对比：传统 ETL 开发方式与 Flink SQL 声明式开发的差异</desc>
+
+  <defs>
+    <marker id="arrp" viewBox="0 0 10 10" refX="8" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- ===== Entry block ===== -->
+  <rect x="230" y="24" width="220" height="32" rx="6" fill="#26215C"/>
+  <text x="340" y="44" font-family="-apple-system, PingFang SC, sans-serif" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">实时数据处理需求</text>
+
+  <!-- Fork arrows from entry -->
+  <line x1="260" y1="56" x2="103" y2="68" stroke="#888780" stroke-width="1.2" marker-end="url(#arrp)"/>
+  <line x1="420" y1="56" x2="577" y2="68" stroke="#888780" stroke-width="1.2" marker-end="url(#arrp)"/>
+
+  <!-- ===== Left column: 传统 ETL (Purple) ===== -->
+  <rect x="20" y="68" width="300" height="162" rx="10" fill="#EEEDFE" stroke="#AFA9EC" stroke-width="0.5"/>
+
+  <text x="170" y="92" font-family="-apple-system, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#26215C" text-anchor="middle">传统 ETL</text>
+  <text x="170" y="108" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" fill="#534AB7" text-anchor="middle">Java / Python 代码</text>
+
+  <rect x="40" y="118" width="260" height="28" rx="5" fill="#CECBF6" stroke="#AFA9EC" stroke-width="0.5"/>
+  <text x="170" y="137" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#26215C" text-anchor="middle">编写 DataStream 代码</text>
+
+  <line x1="170" y1="146" x2="170" y2="154" stroke="#888780" stroke-width="1.2" marker-end="url(#arrp)"/>
+
+  <rect x="40" y="154" width="260" height="28" rx="5" fill="#CECBF6" stroke="#AFA9EC" stroke-width="0.5"/>
+  <text x="170" y="173" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#26215C" text-anchor="middle">手动管理状态和窗口</text>
+
+  <line x1="170" y1="182" x2="170" y2="190" stroke="#888780" stroke-width="1.2" marker-end="url(#arrp)"/>
+
+  <rect x="40" y="190" width="260" height="28" rx="5" fill="#CECBF6" stroke="#AFA9EC" stroke-width="0.5"/>
+  <text x="170" y="209" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#26215C" text-anchor="middle">编译 → 打包 → 提交</text>
+
+  <!-- ===== Right column: Flink SQL (Blue) ===== -->
+  <rect x="360" y="68" width="300" height="162" rx="10" fill="#E6F1FB" stroke="#85B7EB" stroke-width="0.5"/>
+
+  <text x="510" y="92" font-family="-apple-system, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#042C53" text-anchor="middle">Flink SQL</text>
+  <text x="510" y="108" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" fill="#185FA5" text-anchor="middle">声明式 SQL</text>
+
+  <rect x="380" y="118" width="260" height="28" rx="5" fill="#C3DCFA" stroke="#85B7EB" stroke-width="0.5"/>
+  <text x="510" y="137" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#042C53" text-anchor="middle">写 DDL / DML SQL</text>
+
+  <line x1="510" y1="146" x2="510" y2="154" stroke="#888780" stroke-width="1.2" marker-end="url(#arrp)"/>
+
+  <rect x="380" y="154" width="260" height="28" rx="5" fill="#C3DCFA" stroke="#85B7EB" stroke-width="0.5"/>
+  <text x="510" y="173" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#042C53" text-anchor="middle">引擎自动管理状态</text>
+
+  <line x1="510" y1="182" x2="510" y2="190" stroke="#888780" stroke-width="1.2" marker-end="url(#arrp)"/>
+
+  <rect x="380" y="190" width="260" height="28" rx="5" fill="#C3DCFA" stroke="#85B7EB" stroke-width="0.5"/>
+  <text x="510" y="209" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#042C53" text-anchor="middle">CI/CD 自动提交上线</text>
+
+  <!-- ===== Bottom summary bar (Neutral) ===== -->
+  <rect x="20" y="276" width="640" height="50" rx="8" fill="#FAF7F2" stroke="#E0D8C8" stroke-width="0.5"/>
+
+  <!-- 4 equally-spaced columns: center at 100, 260, 420, 580 -->
+  <text x="100" y="297" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#5a5955" text-anchor="middle">代码量</text>
+  <text x="100" y="315" font-family="-apple-system, PingFang SC, sans-serif" font-size="9" fill="#888780" text-anchor="middle">数百行 vs 数十行</text>
+
+  <text x="260" y="297" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#5a5955" text-anchor="middle">学习门槛</text>
+  <text x="260" y="315" font-family="-apple-system, PingFang SC, sans-serif" font-size="9" fill="#888780" text-anchor="middle">需 Java 基础 vs SQL 即可</text>
+
+  <text x="420" y="297" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#5a5955" text-anchor="middle">维护成本</text>
+  <text x="420" y="315" font-family="-apple-system, PingFang SC, sans-serif" font-size="9" fill="#888780" text-anchor="middle">高 · 逻辑分散 vs 低 · 声明式</text>
+
+  <text x="580" y="297" font-family="-apple-system, PingFang SC, sans-serif" font-size="11" font-weight="600" fill="#5a5955" text-anchor="middle">迭代速度</text>
+  <text x="580" y="315" font-family="-apple-system, PingFang SC, sans-serif" font-size="9" fill="#888780" text-anchor="middle">天级 vs 分钟级</text>
+</svg>
