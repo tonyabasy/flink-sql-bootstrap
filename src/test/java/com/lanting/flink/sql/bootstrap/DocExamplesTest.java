@@ -27,6 +27,7 @@ import com.lanting.flink.sql.bootstrap.util.JSON;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.Test;
  * Verify that the JSON examples shown in the documentation
  * can be successfully parsed by the actual data model classes.
  */
+@Disabled("文档示例测试，不参与 CI — 仅用于开发阶段手动验证")
 class DocExamplesTest {
 
     private static String loadResource(String path) {

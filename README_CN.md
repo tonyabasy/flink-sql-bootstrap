@@ -71,7 +71,7 @@
 - **❌ 失败** —— API 不兼容导致作业提交或执行失败。
 - **—** —— 尚未测试（NT）。
 
-完整报告：[docs/flink-compat-test-1.0.0.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.0.html)
+完整报告：[docs/flink-compat-test-1.0.1.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.1.html)
 
 
 ## 快速开始

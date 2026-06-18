@@ -5,6 +5,16 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 并且本项目遵循 [语义化版本控制](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
+## [1.0.1] - 2026-06-19
+
+### Changed（变更）
+
+- **预置资源规格领域驱动重命名** —— 资源配置从「杯型」命名改为按算子职责命名（`small` → `stateless`、`normal` → `stateful`、`large` → `join_heavy`、`xlarge` → `sink`），资源分配值同步调优。**不兼容旧版资源配置 JSON**
+
+### Added（新增）
+
+- **技术站点** —— 基于双语文档架构构建技术站点，含博客、用户指南及社区页面
+
 ## [1.0.0] - 2026-06-08
 
 ### Added（新增）
@@ -42,7 +52,7 @@
 - Flink 多版本兼容性测试套件 (`scripts/flink-compat-test/`) —— 自动化测试 Flink 1.20 ~ 2.2 在 Local、YARN、Kubernetes 部署模式下的兼容性，生成 HTML 兼容性报告 (`docs/flink-compat-test-<version>.html`)，包含通过/失败矩阵和错误分类
 
 - 5 种部署模式（Local、YARN-App、YARN-Session、K8s-Session、K8s-App）全部测试通过。
-- 完整兼容性报告：[docs/flink-compat-test-1.0.0.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.0.html)
+- 完整兼容性报告：[docs/flink-compat-test-1.0.1.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.1.html)
 - 提供领域术语表（[CONTEXT.md](CONTEXT.md)）
 - 提供 SQL 示例（[`example-word-count.sql`](src/main/resources/example-word-count.sql)、[`example-word-count-advanced.sql`](src/main/resources/example-word-count-advanced.sql)）
 - 提供 Catalog 快照示例（[`example-catalog.json`](src/main/resources/example-catalog.json)）

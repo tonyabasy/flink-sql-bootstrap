@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-06-19
+
+### Changed
+
+- **Domain-driven resource profile renaming** — Resource profiles renamed from cup-size naming to operator-responsibility naming (`small` → `stateless`, `normal` → `stateful`, `large` → `join_heavy`, `xlarge` → `sink`), with resource values tuned accordingly. **Not backward-compatible with legacy resource configuration JSON**
+
+### Added
+
+- **Documentation site** — Built a documentation site with bilingual architecture, including blogs, user guide, and community pages
+
 ## [1.0.0] - 2026-06-08
 
 ### Added
@@ -42,4 +52,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flink multi-version compatibility test suite (`scripts/flink-compat-test/`) — automated testing across Flink 1.20 ~ 2.2 in Local, YARN, and Kubernetes deployment modes. Generates HTML compatibility reports (`docs/flink-compat-test-<version>.html`) with pass/fail matrix and error classification.
 
 - All 5 deployment modes (Local, YARN-App, YARN-Session, K8s-Session, K8s-App) tested and passing.
-- Full compatibility report: [docs/flink-compat-test-1.0.0.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.0.html)
+- Full compatibility report: [docs/flink-compat-test-1.0.1.html](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.1.html)

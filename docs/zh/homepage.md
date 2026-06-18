@@ -86,6 +86,12 @@ $FLINK_HOME/bin/flink run \
 <div class="home-list">
 
 <div class="item">
+  <span class="date">2026-06-19</span>
+  <a href="https://github.com/tonyabasy/flink-sql-bootstrap/releases/tag/v1.0.1">v1.0.1 发布</a>
+  &mdash; 资源规格按算子职责重命名、文档站点上线
+</div>
+
+<div class="item">
   <span class="date">2026-06-16</span>
   <a href="#/blogs/02-cicd-pipeline.md">Flink 实时数仓开发实战：像后端那样 CI/CD</a>
 </div>

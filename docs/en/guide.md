@@ -363,7 +363,7 @@ The diagram above illustrates the overall processing pipeline: external inputs (
 
 ## Compatibility
 
-Verified via the [compatibility test suite](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.0.html) on Local, YARN, and Kubernetes.
+Verified via the [compatibility test suite](https://tonyabasy.github.io/flink-sql-bootstrap/flink-compat-test-1.0.1.html) on Local, YARN, and Kubernetes.
 
 | Flink Version | Local | YARN-App | YARN-Session | K8s-Session | K8s-App |
 |:--------------|:-----:|:--------:|:------------:|:-----------:|:-------:|

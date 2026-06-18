@@ -11,7 +11,7 @@ CONFIG_YAML="${SCRIPT_DIR}/config.yaml"
 
 # ── 1. 从 config.yaml 加载默认值 ─────────────────────────────────────────────
 # 读取 YAML 中的简单（非嵌套）键值
-# 用法：get_config "app_jar"   →   "target/flink-sql-bootstrap-1.0.0.jar"
+# 用法：get_config "app_jar"   →   "target/flink-sql-bootstrap-${version}.jar"
 get_config() {
   local key="$1"
   grep "^${key}:" "${CONFIG_YAML}" \

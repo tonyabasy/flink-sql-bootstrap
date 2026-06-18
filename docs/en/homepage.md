@@ -86,6 +86,12 @@ $FLINK_HOME/bin/flink run \
 <div class="home-list">
 
 <div class="item">
+  <span class="date">2026-06-19</span>
+  <a href="https://github.com/tonyabasy/flink-sql-bootstrap/releases/tag/v1.0.1">v1.0.1 Released</a>
+  &mdash; Resource profiles renamed by operator role, documentation site
+</div>
+
+<div class="item">
   <span class="date">2026-06-16</span>
   <a href="#/blogs/02-cicd-pipeline.md">Flink in Production: CI/CD Pipeline Like a Backend Service</a>
 </div>
