@@ -371,23 +371,6 @@ Describes a self-contained catalog with tables, views, and UDFs. Supports comput
 - No custom SQL dialects — you get exactly the same results as native Flink SQL.
 - User Flink configurations are passed through as-is.
 
-
-## Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
-
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guide — setup, coding style, PR workflow |
-| [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
-| [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability boundaries — what this project is and is not |
-| [CONTEXT.md](CONTEXT.md) | Domain glossary and terminology |
-| [docs/flink-compatibility-test.md](docs/flink-compatibility-test.md) | Flink multi-version compatibility test guide |
-
-
 ## License
 
 Licensed under the Apache License, Version 2.0.

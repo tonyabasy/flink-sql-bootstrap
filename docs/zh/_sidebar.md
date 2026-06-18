@@ -5,6 +5,8 @@
   - [执行模式](guide#执行模式)
   - [配置参考](guide#配置参考)
   - [架构](guide#架构)
+  - [能力边界](guide#能力边界)
   - [兼容性](guide#兼容性)
 - [博客](blogs/index.md)
 - [社区](community.md)
+- [兼容性测试](compatibility-test.md)

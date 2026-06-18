@@ -1,5 +1,11 @@
 /* ===== Docsify custom overrides ===== */
 
+/* -- floating navbar -- */
+nav.app-nav {
+  position: fixed;
+  z-index: 100;
+}
+
 /* -- hero section on homepage -- */
 .hero {
   text-align: center;

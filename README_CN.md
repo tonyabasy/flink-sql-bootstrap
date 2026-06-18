@@ -369,20 +369,6 @@ $FLINK_HOME/bin/flink run ... --script-file job.sql --init-resource
 - 不提供任何自定义 SQL 方言 —— 执行结果与原生 Flink SQL 完全一致。
 - 用户配置的 Flink 参数原样透传，不做任何改动。
 
-## 如何贡献
-
-欢迎贡献！详见 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。
-
-## 文档
-
-| 文档 | 说明 |
-|------|------|
-| [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md) | 贡献指南 —— 环境搭建、代码风格、PR 流程 |
-| [CHANGELOG_CN.md](CHANGELOG_CN.md) | 版本历史与更新记录 |
-| [docs/CAPABILITIES_CN.md](docs/CAPABILITIES_CN.md) | 能力边界 —— 本项目做什么、不做什么 |
-| [CONTEXT_CN.md](CONTEXT_CN.md) | 领域术语表 |
-| [docs/flink-compat-test_CN.md](docs/flink-compat-test_CN.md) | Flink 多版本兼容性测试指南 |
-
 ## 许可证
 
 基于 Apache License, Version 2.0 开源。

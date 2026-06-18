@@ -10,7 +10,7 @@ Like the previous post [Flink in Production: Use Flink SQL Like Hive](./01-hive-
 
 ## Why CI/CD
 
-<p align="center"><img src="images/etl-vs-flinksql.svg" alt="Flink SQL CI/CD vs Flink DataStream" width="700" /></p>
+<p align="center"><img src="blogs/images/etl-vs-flinksql.svg" alt="Flink SQL CI/CD vs Flink DataStream" width="700" /></p>
 <p align="center"><em>Fig 1 · Flink SQL CI/CD vs Traditional ETL</em></p>
 
 Introducing CI/CD for Flink SQL improves development efficiency across four dimensions:
@@ -79,7 +79,7 @@ In the example, PR events trigger CI: if a PR is submitted and `.sql` files are 
 
 > The CD pipeline is a demonstration of the full chain. Actual CD pipelines may involve permissions, approvals, deployment order, timing, and strategies — adapt to your own situation.
 
-<p align="center"><img src="images/cicd-pipeline-flow.svg" alt="Flink SQL CI/CD Three-Stage Pipeline" width="700" /></p>
+<p align="center"><img src="blogs/images/cicd-pipeline-flow.svg" alt="Flink SQL CI/CD Three-Stage Pipeline" width="700" /></p>
 <p align="center"><em>Fig 2 · Flink SQL CI/CD Three-Stage Pipeline</em></p>
 
 The entire pipeline is driven by 4 scripts and 1 `.gitlab-ci.yml`.
@@ -172,7 +172,7 @@ The multi-statement SQL splitting mechanism was covered in detail in [the previo
 
 Behind a single `flink run` command, `flink-sql-bootstrap` supports three modes in progressive order:
 
-<p align="center"><img src="images/flink-sql-full-pipeline.svg" alt="Flink SQL --validate → --compile → execute full pipeline" width="700" /></p>
+<p align="center"><img src="blogs/images/flink-sql-full-pipeline.svg" alt="Flink SQL --validate → --compile → execute full pipeline" width="700" /></p>
 <p align="center"><em>Fig 3 · --validate → --compile → execute Three-Stage Pipeline</em></p>
 
 - **`--validate`**: Stops after parse + DDL execution + DML staging, no compilation or submission. ~2 seconds
@@ -183,7 +183,7 @@ Behind a single `flink run` command, `flink-sql-bootstrap` supports three modes 
 
 ### `--validate` Internal Flow
 
-<p align="center"><img src="images/validate-detail.svg" alt="--validate internal flow" width="700" /></p>
+<p align="center"><img src="blogs/images/validate-detail.svg" alt="--validate internal flow" width="700" /></p>
 <p align="center"><em>Fig 4 · --validate Internals: Parse Each Statement → Dispatch by Type</em></p>
 
 After splitting, each SQL statement goes through a three-step parse pipeline — `ParserImpl.parse()`'s internal three-stage pipeline:

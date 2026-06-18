@@ -5,6 +5,8 @@
   - [Execution Modes](guide#Execution-Modes)
   - [Configuration Reference](guide#Configuration-Reference)
   - [Architecture](guide#Architecture)
+  - [Capability Boundaries](guide#Capability-Boundaries)
   - [Compatibility](guide#Compatibility)
 - [Blog](blogs/index.md)
 - [Community](community.md)
+- [Compatibility Test](compatibility-test.md)

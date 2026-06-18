@@ -191,7 +191,7 @@ flink run path/to/flink-sql-bootstrap.jar --script-file jobs/etl_orders.sql --va
 
 把 Flink 2.x 源码打开看，SQL 脚本在 Application Mode 下的完整执行链路如下：
 
-<p align="center"><img src="../blogs/images/flink-2x-sql-pipeline.svg" alt="Flink 2.x SQL 脚本 Application Mode 执行链路" width="700" /></p>
+<p align="center"><img src="blogs/images/flink-2x-sql-pipeline.svg" alt="Flink 2.x SQL 脚本 Application Mode 执行链路" width="700" /></p>
 <p align="center"><em>图 1 · Flink 2.x SQL 脚本 Application Mode 完整执行链路</em></p>
 
 关键角色：
@@ -209,7 +209,7 @@ flink run path/to/flink-sql-bootstrap.jar --script-file jobs/etl_orders.sql --va
 
 ### 两条路的对比：官方方案 vs 本文方案
 
-<p align="center"><img src="../blogs/images/official-vs-ours-comparison.svg" alt="官方方案与本文方案对比" width="700" /></p>
+<p align="center"><img src="blogs/images/official-vs-ours-comparison.svg" alt="官方方案与本文方案对比" width="700" /></p>
 <p align="center"><em>图 2 · 官方方案（Flink 2.x）与本文方案（Flink 1.20+）核心差异</em></p>
 
 具体来说，我们的思路和社区路线保持一致：
@@ -224,7 +224,7 @@ flink run path/to/flink-sql-bootstrap.jar --script-file jobs/etl_orders.sql --va
 
 Flink 原生不接受 Multi-Statement SQL，所以必须自己实现脚本切分与编排。**切分器直接复用了 Flink 2.2.0 中 `ScriptExecutor` 的状态机逻辑**（逐字符扫描、正确处理单/双/反引号内的分号和注释内的分号），DDL/DML 的分派则通过解析 `Operation` 对象的类型来决定。核心引擎 `StreamingScriptExecutor` 的工作流分为三个阶段。
 
-<p align="center"><img src="../blogs/images/streaming-script-executor-flow.svg" alt="SPI 兼容性对比" width="700" /></p>
+<p align="center"><img src="blogs/images/streaming-script-executor-flow.svg" alt="SPI 兼容性对比" width="700" /></p>
 <p align="center"><em>图3 · 三阶段处理 Multi-Statement SQL</em></p>
 
 ### 阶段一：智能切分（Tokenization）
