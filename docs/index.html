@@ -6,11 +6,11 @@
   <title>Flink SQL Bootstrap</title>
   <script>
     var lang = (navigator.language || 'en').toLowerCase();
-    var target = lang.startsWith('zh') ? 'zh/' : 'en/';
-    window.location.replace(target);
+    var base = window.location.pathname.replace(/(\/index\.html)?$/, '/');
+    window.location.replace(base + (lang.startsWith('zh') ? 'zh/' : 'en/'));
   </script>
 </head>
 <body>
-  <p>Redirecting to <a href="/zh/">中文</a> or <a href="/en/">English</a>...</p>
+  <p>Redirecting to <a href="zh/">中文</a> or <a href="en/">English</a>...</p>
 </body>
 </html>
