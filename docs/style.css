@@ -1,0 +1,173 @@
+/* ===== Docsify custom overrides ===== */
+
+/* -- hero section on homepage -- */
+.hero {
+  text-align: center;
+  padding: 60px 24px 40px;
+}
+.hero h1 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.hero .tagline {
+  font-size: 1.15rem;
+  color: #6b7280;
+  max-width: 640px;
+  margin: 0 auto 24px;
+}
+.hero .badges {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.hero .badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge-blue  { background: #dbeafe; color: #1e40af; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-orange{ background: #ffedd5; color: #9a3412; }
+
+/* -- pain-point comparison table -- */
+.pain-table {
+  max-width: 800px;
+  margin: 0 auto 48px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.pain-table th,
+.pain-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+.pain-table th {
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* -- feature grid -- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto 48px;
+}
+.feature {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px;
+}
+.feature h4 {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+.feature p {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* -- section divider -- */
+.section-title {
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 48px 0 24px;
+}
+
+/* -- release / blog list on homepage -- */
+.home-list {
+  max-width: 700px;
+  margin: 0 auto 40px;
+}
+.home-list .item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9rem;
+}
+.home-list .item .date {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* -- blog list -- */
+.blog-list {
+  max-width: 720px;
+  margin: 24px auto 48px;
+}
+.blog-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.blog-item:last-child {
+  border-bottom: none;
+}
+.blog-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.blog-date {
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+.blog-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: #eef2ff;
+  color: #4338ca;
+}
+.blog-title {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--theme-color, #3b82f6);
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+.blog-title:hover {
+  text-decoration: underline;
+}
+.blog-desc {
+  color: #6b7280;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* -- footer -- */
+.site-footer {
+  text-align: center;
+  padding: 32px 0;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 48px;
+}
+.site-footer a {
+  color: #2563eb;
+  text-decoration: none;
+}

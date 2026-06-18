@@ -53,8 +53,8 @@ class OperatorResourceSpecTest {
         OperatorResourceSpec spec = new OperatorResourceSpec(0.5, "1024 MB", null, null, null);
         String name = OperatorResourceSpec.generateName(spec);
 
-        // 0.5 CPU + 1024 MB heap 匹配 NORMAL 预置规格
-        assertEquals("normal", name);
+        // 0.5 CPU + 1024 MB heap 匹配 SINK 预置规格
+        assertEquals("sink", name);
     }
 
     @Test
@@ -87,31 +87,31 @@ class OperatorResourceSpecTest {
     }
 
     @Test
-    @DisplayName("预置规格 SMALL：返回固定名称 'small'")
-    void presetSmall() {
-        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.SMALL);
-        assertEquals("small", name);
+    @DisplayName("预置规格 STATELESS：返回固定名称 'stateless'")
+    void presetStateless() {
+        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.STATELESS);
+        assertEquals("stateless", name);
     }
 
     @Test
-    @DisplayName("预置规格 NORMAL：返回固定名称 'normal'")
-    void presetNormal() {
-        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.NORMAL);
-        assertEquals("normal", name);
+    @DisplayName("预置规格 STATEFUL：返回固定名称 'stateful'")
+    void presetStateful() {
+        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.STATEFUL);
+        assertEquals("stateful", name);
     }
 
     @Test
-    @DisplayName("预置规格 LARGE：返回固定名称 'large'")
-    void presetLarge() {
-        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.LARGE);
-        assertEquals("large", name);
+    @DisplayName("预置规格 JOIN_HEAVY：返回固定名称 'join_heavy'")
+    void presetJoinHeavy() {
+        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.JOIN_HEAVY);
+        assertEquals("join_heavy", name);
     }
 
     @Test
-    @DisplayName("预置规格 XLARGE：返回固定名称 'xlarge'")
-    void presetXlarge() {
-        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.XLARGE);
-        assertEquals("xlarge", name);
+    @DisplayName("预置规格 SINK：返回固定名称 'sink'")
+    void presetSink() {
+        String name = OperatorResourceSpec.generateName(OperatorResourceSpec.SINK);
+        assertEquals("sink", name);
     }
 
     // ─── 逆向 ──────────────────────────────────────────────────────────────

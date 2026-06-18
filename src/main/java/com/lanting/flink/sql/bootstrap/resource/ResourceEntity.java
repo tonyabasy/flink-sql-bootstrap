@@ -41,7 +41,7 @@ import lombok.NoArgsConstructor;
  *       "parallelism": 2,
  *       "chainStrategy": "ALWAYS",
  *       "resource": {
- *         "profile": "small"
+ *         "profile": "stateless"
  *       }
  *     },
  *     {
