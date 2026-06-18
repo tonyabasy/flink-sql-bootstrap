@@ -231,13 +231,13 @@ class StreamingScriptExecutorTest {
         ResourceEntity spec = executor.generateResultSpec();
         for (OperatorEntity op : spec.getOperators()) {
             if (uid.equals(op.getUid())) {
-                op.setResource(OperatorResourceSpec.SMALL);
+                op.setResource(OperatorResourceSpec.STATELESS);
             }
         }
         executor.injectResourceSpec(transformations, JSON.toJSONString(spec));
 
         assertTrue(firstPhysical(transformations).getSlotSharingGroup().isPresent());
-        assertEquals(0.25,
+        assertEquals(0.5,
                 firstPhysical(transformations).getSlotSharingGroup().get().getCpuCores().orElse(0d));
     }
 

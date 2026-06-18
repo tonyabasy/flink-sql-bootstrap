@@ -39,7 +39,7 @@ import lombok.NoArgsConstructor;
  *
  * <p>支持两种配置方式：
  * <ol>
- *   <li><b>预置规格</b>：设置 {@code profile} 字段（如 {@code "small"}），自动匹配预置常量。</li>
+ *   <li><b>预置规格</b>：设置 {@code profile} 字段（如 {@code "stateless"}），自动匹配预置常量。</li>
  *   <li><b>显式值</b>：直接设置 {@code cpu}、{@code heap} 等字段。</li>
  * </ol>
  * 通过 {@link #resolve()} 统一解析为具体的资源值。
@@ -55,40 +55,40 @@ public class OperatorResourceSpec {
     // ---- 预置规格常量 ----
 
     /**
-     * 小杯：0.25 CPU, 512 MB heap
+     * 无状态算子：0.5 CPU, 512 MB heap — filter, map, simple transform
      */
-    public static final OperatorResourceSpec SMALL = new OperatorResourceSpec(
-            "small", 0.25, "512 MB", null, null);
+    public static final OperatorResourceSpec STATELESS = new OperatorResourceSpec(
+            "stateless", 0.5, "512 MB", null, null);
 
     /**
-     * 普通杯：0.5 CPU, 1 GB heap
+     * 有状态算子：1.0 CPU, 2 GB heap, 256 MB managed — window, deduplicate
      */
-    public static final OperatorResourceSpec NORMAL = new OperatorResourceSpec(
-            "normal", 0.5, "1024 MB", null, null);
+    public static final OperatorResourceSpec STATEFUL = new OperatorResourceSpec(
+            "stateful", 1.0, "2048 MB", null, "256 MB");
 
     /**
-     * 大杯：1.0 CPU, 2 GB heap, 256 MB managed
+     * 双流 JOIN：1.0 CPU, 4 GB heap, 512 MB managed — interval join, lookup join
      */
-    public static final OperatorResourceSpec LARGE = new OperatorResourceSpec(
-            "large", 1.0, "2048 MB", null, "256 MB");
+    public static final OperatorResourceSpec JOIN_HEAVY = new OperatorResourceSpec(
+            "join_heavy", 1.0, "4096 MB", null, "512 MB");
 
     /**
-     * 超大杯：2.0 CPU, 4 GB heap, 512 MB managed
+     * Sink 算子：0.5 CPU, 1 GB heap — jdbc sink, file sink
      */
-    public static final OperatorResourceSpec XLARGE = new OperatorResourceSpec(
-            "xlarge", 2.0, "4096 MB", null, "512 MB");
+    public static final OperatorResourceSpec SINK = new OperatorResourceSpec(
+            "sink", 0.5, "1024 MB", null, null);
 
     private static final Map<String, OperatorResourceSpec> STANDARD = new LinkedHashMap<>();
 
     static {
-        STANDARD.put("small", SMALL);
-        STANDARD.put("normal", NORMAL);
-        STANDARD.put("large", LARGE);
-        STANDARD.put("xlarge", XLARGE);
+        STANDARD.put("stateless", STATELESS);
+        STANDARD.put("stateful", STATEFUL);
+        STANDARD.put("join_heavy", JOIN_HEAVY);
+        STANDARD.put("sink", SINK);
     }
 
     /**
-     * 预置规格名称，如 "small"、"normal"、"large"、"xlarge"。设置后优先于显式值。
+     * 预置规格名称，如 "stateless"、"stateful"、"join_heavy"、"sink"。设置后优先于显式值。
      */
     private String profile;
     private Double cpu;
@@ -139,7 +139,7 @@ public class OperatorResourceSpec {
      * <p>内存值会先经 {@link MemorySize#parse(String)} 规范化，
      * 保证 {@code "512 MB"} 和 {@code "512m"} 得到相同签名。
      *
-     * @return 资源签名，如 {@code "small"}（预置规格）或 MD5 哈希（自定义规格）
+     * @return 资源签名，如 {@code "stateless"}（预置规格）或 MD5 哈希（自定义规格）
      */
     public static String generateName(OperatorResourceSpec optResource) {
         // 匹配预置规格：资源值与 STANDARD 之一完全一致时返回预置名称

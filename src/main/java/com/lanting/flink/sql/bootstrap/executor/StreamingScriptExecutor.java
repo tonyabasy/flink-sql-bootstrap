@@ -300,7 +300,7 @@ public class StreamingScriptExecutor {
             }
 
             if (op.getResource() != null) {
-                // 解析 profile → 具体值（如 "small" → 0.25 CPU + 512 MB heap）
+                // 解析 profile → 具体值（如 "stateless" → 0.5 CPU + 512 MB heap）
                 OperatorResourceSpec r = op.getResource().resolve();
                 if (r.getProfile() != null) {
                     r.setProfile(OperatorResourceSpec.generateName(r));

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "defaultParallelism": 2,
+  "operators": [
+    {
+      "uid": "1_source",
+      "name": "ods_words[1]",
+      "parallelism": 1,
+      "chainStrategy": "HEAD",
+      "resource": { "profile": "stateless" }
+    },
+    {
+      "uid": "5_group-aggregate",
+      "name": "GroupAggregate[5]",
+      "parallelism": 4,
+      "chainStrategy": "ALWAYS",
+      "resource": {
+        "cpu": 1.0,
+        "heap": "2048m",
+        "managed": "256m"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "snapshotId": "example-word-count",
+  "catalogName": "platform",
+  "databaseName": "default",
+  "tables": [
+    {
+      "database": "default",
+      "name": "ods_words",
+      "columns": [
+        { "name": "sentence", "type": "STRING", "nullable": true },
+        { "name": "ts", "type": "TIMESTAMP_LTZ(3)", "nullable": false,
+          "isComputed": true, "computedExpr": "PROCTIME()" }
+      ],
+      "primaryKey": { "columnNames": ["id"], "enforced": true },
+      "watermark": { "rowtimeColumn": "ts", "expression": "ts - INTERVAL '5' SECOND" },
+      "partitionKeys": [],
+      "options": {
+        "connector": "datagen",
+        "rows-per-second": "1"
+      }
+    }
+  ],
+  "views": [
+    {
+      "database": "default",
+      "name": "v_latest_words",
+      "expandedQuery": "SELECT sentence FROM ods_words WHERE ts > CURRENT_TIMESTAMP - INTERVAL '10' MINUTE"
+    }
+  ],
+  "udfs": [
+    {
+      "database": "default",
+      "name": "my_reverse",
+      "kind": "SCALAR",
+      "className": "examples.udf.MyReverseFunction",
+      "functionLanguage": "JAVA",
+      "jarRef": "example-udf-reverse.jar"
+    }
+  ]
+}
