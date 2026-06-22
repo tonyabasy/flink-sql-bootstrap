@@ -7,6 +7,6 @@
   - [Architecture](guide#Architecture)
   - [Capability Boundaries](guide#Capability-Boundaries)
   - [Compatibility](guide#Compatibility)
-- [Blog](blogs/index.md)
+- [Blog](blogs.md)
 - [Community](community.md)
 - [Compatibility Test](compatibility-test.md)

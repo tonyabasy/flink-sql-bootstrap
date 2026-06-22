@@ -24,3 +24,4 @@ CLAUDE.md
 
 docs/agents
 .codebuddy/
+.playwright-cli/

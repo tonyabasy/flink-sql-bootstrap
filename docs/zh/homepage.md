@@ -93,12 +93,12 @@ $FLINK_HOME/bin/flink run \
 
 <div class="item">
   <span class="date">2026-06-16</span>
-  <a href="#/blogs/02-cicd-pipeline.md">Flink 实时数仓开发实战：像后端那样 CI/CD</a>
+  <a href="#/02-cicd-pipeline.md">Flink 实时数仓开发实战：像后端那样 CI/CD</a>
 </div>
 
 <div class="item">
   <span class="date">2026-06-10</span>
-  <a href="#/blogs/01-hive-like-flink-sql.md">Flink 实时数仓开发实战：像 Hive 那样用 Flink SQL</a>
+  <a href="#/01-hive-like-flink-sql.md">Flink 实时数仓开发实战：像 Hive 那样用 Flink SQL</a>
 </div>
 
 <div class="item">

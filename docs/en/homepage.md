@@ -93,12 +93,12 @@ $FLINK_HOME/bin/flink run \
 
 <div class="item">
   <span class="date">2026-06-16</span>
-  <a href="#/blogs/02-cicd-pipeline.md">Flink in Production: CI/CD Pipeline Like a Backend Service</a>
+  <a href="#/02-cicd-pipeline.md">Flink in Production: CI/CD Pipeline Like a Backend Service</a>
 </div>
 
 <div class="item">
   <span class="date">2026-06-10</span>
-  <a href="#/blogs/01-hive-like-flink-sql.md">Flink in Production: Use Flink SQL Like Hive</a>
+  <a href="#/01-hive-like-flink-sql.md">Flink in Production: Use Flink SQL Like Hive</a>
 </div>
 
 <div class="item">

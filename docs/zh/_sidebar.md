@@ -7,6 +7,6 @@
   - [架构](guide#架构)
   - [能力边界](guide#能力边界)
   - [兼容性](guide#兼容性)
-- [博客](blogs/index.md)
+- [博客](blogs.md)
 - [社区](community.md)
 - [兼容性测试](compatibility-test.md)

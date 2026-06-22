@@ -192,7 +192,8 @@ This parses all statements, validates each one, with errors reported at exact li
 
 Opening up the Flink 2.x source, the complete execution chain for SQL scripts in Application Mode:
 
-<p align="center"><img src="blogs/images/flink-2x-sql-pipeline.svg" alt="Flink 2.x SQL Script Application Mode Execution Pipeline" width="700" /></p>
+![](images/flink-2x-sql-pipeline.svg)
+
 <p align="center"><em>Fig 1 · Flink 2.x SQL Script Application Mode Complete Pipeline</em></p>
 
 Key roles:
@@ -210,7 +211,8 @@ This means: **you don't need to modify SQL execution logic — only minor compat
 
 ### Two Paths: Official vs. This Approach
 
-<p align="center"><img src="blogs/images/official-vs-ours-comparison.svg" alt="Official approach vs this approach" width="700" /></p>
+![](images/official-vs-ours-comparison.svg)
+
 <p align="center"><em>Fig 2 · Official (Flink 2.x) vs. This Approach (Flink 1.20+) Key Differences</em></p>
 
 Specifically, our approach stays aligned with the community trajectory:
@@ -225,7 +227,8 @@ Specifically, our approach stays aligned with the community trajectory:
 
 Flink natively doesn't accept Multi-Statement SQL, so script splitting and orchestration must be implemented. **The splitter directly reuses Flink 2.2.0's `ScriptExecutor` state machine** (character-by-character scanning, correctly handling semicolons within single/double/backtick quotes and comments). DDL/DML dispatching is done by checking the `Operation` object type. The core engine `StreamingScriptExecutor`'s workflow has three stages.
 
-<p align="center"><img src="blogs/images/streaming-script-executor-flow.svg" alt="Three-stage processing" width="700" /></p>
+![](images/streaming-script-executor-flow.svg)
+
 <p align="center"><em>Fig 3 · Three-Stage Multi-Statement SQL Processing</em></p>
 
 ### Stage 1: Intelligent Tokenization
