@@ -6,7 +6,7 @@ The first post solved "how to write" — one `flink run` executes a complete Mul
 
 This post dives into the internals of **Flink SQL Validate** (Calcite parsing and validation) — the most fundamental and important component of internal real-time development workflows at major tech companies. You'll learn not just how to use it, but why it can precisely validate syntax without connecting to a Flink cluster.
 
-Like the previous post [Flink in Production: Use Flink SQL Like Hive](./01-hive-like-flink-sql.md), this one also provides an example project [Flink SQL Bootstrap Examples - CI/CD](https://github.com/tonyabasy/flink-sql-bootstrap-examples/tree/main/example-cicd) to help you set up a local environment and walk through the CI/CD pipeline step by step.
+Like the previous post [Flink in Production: Use Flink SQL Like Hive](blogs/01-hive-like-flink-sql.md), this one also provides an example project [Flink SQL Bootstrap Examples - CI/CD](https://github.com/tonyabasy/flink-sql-bootstrap-examples/tree/main/example-cicd) to help you set up a local environment and walk through the CI/CD pipeline step by step.
 
 ## Why CI/CD
 
@@ -166,7 +166,7 @@ bash scripts/generate-deploy-pipeline.sh --from HEAD~2 --to HEAD
 
 ## Internals Deep Dive
 
-The multi-statement SQL splitting mechanism was covered in detail in [the previous post](./01-hive-like-flink-sql.md) (Stage 1: Intelligent Tokenization) — the six-state character-by-character scanner, semicolon handling within quotes and comments — so we won't repeat it here. Let's focus on what happens after splitting.
+The multi-statement SQL splitting mechanism was covered in detail in [the previous post](blogs/01-hive-like-flink-sql.md) (Stage 1: Intelligent Tokenization) — the six-state character-by-character scanner, semicolon handling within quotes and comments — so we won't repeat it here. Let's focus on what happens after splitting.
 
 ### Full Pipeline Overview
 
@@ -245,7 +245,7 @@ DDL's side effects (modifying the Catalog) must be immediately visible to all su
 
 ## Summary
 
-This series consists of two posts, the first being [Flink in Production: Use Flink SQL Like Hive](./01-hive-like-flink-sql.md). The intention behind this series is to share, based on my own experience, an effective, reliable, low-cost Flink SQL data warehouse development workflow that improves both development efficiency and quality.
+This series consists of two posts, the first being [Flink in Production: Use Flink SQL Like Hive](blogs/01-hive-like-flink-sql.md). The intention behind this series is to share, based on my own experience, an effective, reliable, low-cost Flink SQL data warehouse development workflow that improves both development efficiency and quality.
 
 I'm genuinely passionate about coding, data engineering, and life. I welcome discussion and am happy to answer **any questions** you have. I'm also open to connecting on any topic within my areas of expertise (including but not limited to: development efficiency, AI, data engineering, history and literature, and perhaps value investing).
 
