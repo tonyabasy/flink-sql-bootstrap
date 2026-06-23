@@ -2,7 +2,7 @@
 
 ## Overview
 
-The first two articles solved two things: **how to run** ([Use Flink SQL Like Hive](01-hive-like-flink-sql.md) — a single `flink run` to execute a complete Multi-Statement SQL script), and **how to manage** ([CI/CD Like a Backend Service](02-cicd-pipeline.md)).
+The first two articles solved two things: **how to run** ([Use Flink SQL Like Hive](01-hive-like-flink-sql.md)), and **how to manage** ([CI/CD Like a Backend Service](02-cicd-pipeline.md)).
 
 In traditional Flink SQL, **DDLs are scattered across every SQL script**. A real-time data warehouse has dozens of tables, and each table's `CREATE TABLE` appears in every script that references it. Change one field type, and every script must be updated. This is why you need a **metadata hub**.
 
@@ -80,7 +80,7 @@ So why not use Flink's built-in Catalogs directly? `GenericInMemoryCatalog` is p
 
 The Catalog Snapshot solves this: **freeze the DDL at deployment time into an immutable JSON file.** What it looked like at deployment is what it will look like on restart. That's why this JSON should go into Git alongside your SQL scripts — the complete metadata state at deployment time is locked in forever.
 
-> In flink-sql-bootstrap, the snapshot's **immutability is a convention, not enforced by code**. flink-sql-bootstrap handles decoupling DDL from SQL scripts. You are responsible for keeping that DDL unchanged throughout the deployment lifecycle — lock down the URL version, check it into Git alongside your scripts, and you're good.
+> In flink-sql-bootstrap, the snapshot's **immutability is a convention, not enforced by code — only a `snapshotId` is defined in the Catalog**. flink-sql-bootstrap handles decoupling DDL from SQL scripts. You are responsible for keeping that DDL unchanged throughout the deployment lifecycle — lock down the URL version, check it into Git alongside your scripts. For example, if you set up a REST service, the resource would be defined as `https://catalog-server/snapshot/{snapshot-id}`.
 
 ## Quick Start
 
@@ -123,7 +123,7 @@ Output after execution:
 +I[8f, 1]
 ```
 
-The combined effect of UDFs `my_reverse` and `my_substring` — reversing the first two characters of each word — is correctly applied. Throughout the entire process, the SQL script contains no `CREATE TABLE` or `CREATE FUNCTION`. All DDL comes from the Catalog Snapshot.
+The combined effect of UDFs `my_reverse` and `my_substring` is: reversing the first two characters of each word. Throughout the entire process, the SQL script contains no `CREATE TABLE` or `CREATE FUNCTION`. All DDL comes from the Catalog Snapshot.
 
 ## How Does Flink SQL Bootstrap Do It?
 
@@ -194,13 +194,11 @@ If you want to build the same capability yourself, it boils down to two things:
 
 **2. Catalog → SessionEnvironment → SessionContext.** This chain is the standard entry point for Flink SQL Gateway. Simply reuse `SessionEnvironment.Builder` and `UriSafeSessionContext` (or handle 1.20.x compatibility yourself) — no need to reinvent the wheel.
 
-> Reference source: [CatalogEntityFactory.java](https://github.com/tonyabasy/flink-sql-bootstrap/blob/main/src/main/java/com/lanting/flink/sql/bootstrap/catalog/CatalogEntityFactory.java), [SqlEntryPoint.java](https://github.com/tonyabasy/flink-sql-bootstrap/blob/main/src/main/java/com/lanting/flink/sql/bootstrap/SqlEntryPoint.java)
+> Reference source: [CatalogEntityFactory.java](https://github.com/tonyabasy/flink-sql-bootstrap/blob/main/src/main/java/com/lanting/flink/sql/bootstrap/catalog/CatalogEntityFactory.java), [SqlEntryPoint.java](https://github.com/tonyabasy/flink-sql-bootstrap/blob/main/src/main/java/com/lanting/flink/sql/bootstrap/SqlEntryPoint.java), [StreamingScriptExecutor.java](https://github.com/tonyabasy/flink-sql-bootstrap/blob/main/src/main/java/com/lanting/flink/sql/bootstrap/executor/StreamingScriptExecutor.java)
 
 ## Summary
 
-The core assertion of this article is simple: **decouple DDL from SQL scripts and freeze it into an immutable JSON snapshot.** Table schemas, views, UDFs — write DDL once, share it across all jobs. The snapshot goes into Git alongside your SQL scripts; the complete metadata state at deployment time is locked in forever. Job restarts no longer depend on a "live" metadata center, completely eliminating recovery failures caused by Schema drift.
-
-This series' three articles form the infrastructure for Flink SQL real-time data warehouse development: the first covered "how to run" (Multi-Statement SQL), the second covered "how to manage" (CI/CD), and this article covered "how to define" (Catalog Snapshot). The next chapter will introduce the final piece — "how to tune": operator-level fine-grained resource tuning, letting each operator be configured with CPU, memory, and parallelism independently for maximum resource efficiency.
+The core assertion of this article is simple: **decouple DDL from SQL scripts and freeze it into an immutable JSON snapshot** — so that table schemas, views, and UDFs are written once and shared across all jobs. The snapshot goes into Git alongside your SQL scripts; the complete metadata state at deployment time is locked in forever. Job restarts no longer depend on a "live" metadata center, completely eliminating recovery failures caused by Schema drift.
 
 *Based on [Flink SQL Bootstrap](https://github.com/tonyabasy/flink-sql-bootstrap) and its built-in examples*
 

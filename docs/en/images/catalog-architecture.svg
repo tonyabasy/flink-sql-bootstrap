@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 460" width="100%" height="100%">
-  <title>flink-sql-bootstrap 与 Flink 模块架构</title>
-  <desc>上半部分：flink-sql-bootstrap 自建模块（SqlEntryPoint、CatalogEntityFactory、CatalogEntity），下半部分：Flink 官方模块（flink-sql-gateway、flink-table-common、flink-table-planner），箭头表示 API 调用关系</desc>
+  <title>flink-sql-bootstrap and Flink Module Architecture</title>
+  <desc>Top: flink-sql-bootstrap custom modules (SqlEntryPoint, CatalogEntityFactory, CatalogEntity), Bottom: Flink official modules (flink-sql-gateway, flink-table-common, flink-table-planner), arrows indicate API call relationships</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5"
             markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -21,7 +21,7 @@
   <!-- SqlEntryPoint -->
   <rect x="64" y="76" width="180" height="48" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
   <text x="154" y="94" font-family="system-ui,PingFang SC,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">SqlEntryPoint</text>
-  <text x="154" y="112" font-family="system-ui,PingFang SC,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">CLI 解析 · 多协议加载</text>
+  <text x="154" y="112" font-family="system-ui,PingFang SC,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">CLI Parsing · Multi-protocol Loading</text>
 
   <!-- 箭头 SqlEntryPoint → CatalogEntityFactory -->
   <line x1="244" y1="100" x2="286" y2="100" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow-inner)"/>
@@ -29,7 +29,7 @@
   <!-- CatalogEntityFactory -->
   <rect x="288" y="76" width="180" height="48" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
   <text x="378" y="94" font-family="system-ui,PingFang SC,sans-serif" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">CatalogEntityFactory</text>
-  <text x="378" y="112" font-family="system-ui,PingFang SC,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">JSON → Catalog · Schema 构建</text>
+  <text x="378" y="112" font-family="system-ui,PingFang SC,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">JSON → Catalog · Schema Building</text>
 
   <!-- CatalogEntity -->
   <rect x="160" y="138" width="360" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
@@ -46,7 +46,7 @@
   <!-- 左侧箭头：SqlEntryPoint → flink-sql-gateway -->
   <line x1="124" y1="196" x2="124" y2="256" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="108" y="226" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="middle">SessionContext</text>
-  <text x="108" y="238" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="middle">创建与管理</text>
+  <text x="108" y="238" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="middle">Creation &amp; Management</text>
 
   <!-- 中间箭头：CatalogEntityFactory → flink-table-common -->
   <line x1="340" y1="196" x2="340" y2="308" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#arrow)"/>
@@ -55,13 +55,13 @@
 
   <!-- 右侧箭头：CatalogEntityFactory → flink-table-planner -->
   <line x1="556" y1="196" x2="556" y2="360" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="572" y="274" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="start">DML 编译</text>
-  <text x="572" y="286" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="start">&amp; 执行</text>
+  <text x="572" y="274" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="start">DML Compilation</text>
+  <text x="572" y="286" font-family="system-ui,PingFang SC,sans-serif" font-size="9" fill="#5F5E5A" text-anchor="start">&amp; Execution</text>
 
-  <!-- ==================== 下半：Flink 模块 ==================== -->
+  <!-- ==================== 下半：Flink Modules ==================== -->
   <rect x="40" y="258" width="600" height="168" rx="16" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
-  <text x="340" y="284" font-family="system-ui,PingFang SC,sans-serif" font-size="14" font-weight="600" fill="#444441" text-anchor="middle">Flink 模块</text>
-  <text x="340" y="300" font-family="system-ui,PingFang SC,sans-serif" font-size="10" fill="#5F5E5A" text-anchor="middle">官方 API · 零修改</text>
+  <text x="340" y="284" font-family="system-ui,PingFang SC,sans-serif" font-size="14" font-weight="600" fill="#444441" text-anchor="middle">Flink Modules</text>
+  <text x="340" y="300" font-family="system-ui,PingFang SC,sans-serif" font-size="10" fill="#5F5E5A" text-anchor="middle">Official API · Zero Modification</text>
 
   <!-- flink-sql-gateway -->
   <rect x="60" y="314" width="180" height="90" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
