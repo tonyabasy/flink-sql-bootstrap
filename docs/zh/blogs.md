@@ -7,6 +7,12 @@
 <div class="blog-list">
 
 <div class="blog-item">
+  <div class="blog-meta"><span class="blog-date">2026-06-25</span><span class="blog-tag">Flink</span><span class="blog-tag">Resource</span></div>
+  <a class="blog-title" href="#/04-fine-grained-ssg.md">Flink 实时数仓开发实战：SQL中也能做到资源精细化管理</a>
+  <div class="blog-desc">打破 Flink SQL 一刀切的资源配置——拆分 SlotSharingGroup，按算子粒度配置并行度、CPU、内存和 Chain 策略，利用率从 24% 提升到 87%。</div>
+</div>
+
+<div class="blog-item">
   <div class="blog-meta"><span class="blog-date">2026-06-22</span><span class="blog-tag">Flink</span><span class="blog-tag">Catalog</span></div>
   <a class="blog-title" href="#/03-catalog-snapshot.md">Flink 实时数仓开发实战：Catalog 快照，让 DDL 只写一次</a>
   <div class="blog-desc">把 DDL 从 SQL 脚本中剥离，序列化为自包含的 JSON 文件，作业启动时自动恢复——实现 DDL 写一次，所有作业共用。</div>

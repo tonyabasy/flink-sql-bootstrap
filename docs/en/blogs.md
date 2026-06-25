@@ -7,6 +7,12 @@
 <div class="blog-list">
 
 <div class="blog-item">
+  <div class="blog-meta"><span class="blog-date">2026-06-25</span><span class="blog-tag">Flink</span><span class="blog-tag">Resource</span></div>
+  <a class="blog-title" href="#/04-fine-grained-ssg.md">Flink in Production: Fine-Grained Resource Management for SQL</a>
+  <div class="blog-desc">Break free from one-size-fits-all resource allocation in Flink SQL — split SlotSharingGroups, configure parallelism, CPU, memory, and chain strategy per operator, boosting utilization from 24% to 87%.</div>
+</div>
+
+<div class="blog-item">
   <div class="blog-meta"><span class="blog-date">2026-06-22</span><span class="blog-tag">Flink</span><span class="blog-tag">Catalog</span></div>
   <a class="blog-title" href="#/03-catalog-snapshot.md">Flink in Production: Catalog Snapshots — Write DDL Once</a>
   <div class="blog-desc">Decouple DDL from SQL scripts, serialize into a self-contained JSON file, and auto-restore at job startup — write DDL once, reuse across all jobs.</div>
