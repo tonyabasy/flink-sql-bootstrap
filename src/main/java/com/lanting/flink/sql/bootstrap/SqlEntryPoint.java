@@ -159,6 +159,31 @@ public class SqlEntryPoint {
                     .desc("Local path to a dependency JAR file (e.g. UDF jars). Can be specified multiple times. JARs are appended to pipeline.classpaths and distributed to TaskManagers via BlobServer. Equivalent to 'flink run -C'.")
                     .build();
 
+    // Base64 传输组：Application Mode 下 program args 会被序列化进 flink-conf.yaml，
+    // 多行值在写出/读回中损坏（Flink 1.20.4 实测），内联多行内容必须走 b64。
+    // URL-safe 字母表：无引号、无换行、无空白，对整条序列化链天然免疫。
+
+    public static final Option OPTION_SQL_SCRIPT_B64 =
+            Option.builder()
+                    .longOpt("script-b64")
+                    .numberOfArgs(1)
+                    .desc("Base64 (URL-safe) encoded script content. Required for multi-line scripts in Application Mode: Flink serializes program args into flink-conf.yaml and multi-line values do not survive.")
+                    .build();
+
+    public static final Option OPTION_CATALOG_B64 =
+            Option.builder()
+                    .longOpt("catalog-b64")
+                    .numberOfArgs(1)
+                    .desc("Base64 (URL-safe) encoded catalog snapshot JSON content.")
+                    .build();
+
+    public static final Option OPTION_RESOURCE_B64 =
+            Option.builder()
+                    .longOpt("resource-b64")
+                    .numberOfArgs(1)
+                    .desc("Base64 (URL-safe) encoded resource configuration JSON content.")
+                    .build();
+
     public static final Option OPTION_SCRIPT_COMPILE =
             Option.builder()
                     .longOpt("compile")
@@ -305,15 +330,60 @@ public class SqlEntryPoint {
         options.addOption(OPTION_HELP);
         options.addOption(OPTION_SQL_FILE);
         options.addOption(OPTION_SQL_SCRIPT);
+        options.addOption(OPTION_SQL_SCRIPT_B64);
         options.addOption(OPTION_RESOURCE_CONF);
         options.addOption(OPTION_RESOURCE_CONF_FILE);
+        options.addOption(OPTION_RESOURCE_B64);
         options.addOption(OPTION_CATALOG_CONF);
         options.addOption(OPTION_CATALOG_CONF_FILE);
+        options.addOption(OPTION_CATALOG_B64);
         options.addOption(OPTION_DEPENDENCIES);
         options.addOption(OPTION_INIT_RESOURCE);
         options.addOption(OPTION_SCRIPT_COMPILE);
         options.addOption(OPTION_SCRIPT_VALIDATE);
         return options;
+    }
+
+    /**
+     * 三路互斥的内容解析：{@code --xxx-file}（URI 读取）、{@code --xxx}（内联）、
+     * {@code --xxx-b64}（Base64 URL-safe 解码）至多给一个。
+     *
+     * @return 内容文本；三路都没给时返回 {@code null}
+     */
+    private static @Nullable String resolveContent(CommandLine line, Option fileOpt,
+                                                   Option inlineOpt, Option b64Opt) throws IOException {
+        String file = line.getOptionValue(fileOpt.getLongOpt());
+        String inline = line.getOptionValue(inlineOpt.getLongOpt());
+        String b64 = line.getOptionValue(b64Opt.getLongOpt());
+        int count = (file != null ? 1 : 0) + (inline != null ? 1 : 0) + (b64 != null ? 1 : 0);
+        Preconditions.checkArgument(count <= 1,
+                "Don't set \"--%s\", \"--%s\" or \"--%s\" together.",
+                fileOpt.getLongOpt(), inlineOpt.getLongOpt(), b64Opt.getLongOpt());
+
+        if (file != null) {
+            return getContent(file);
+        }
+        if (inline != null) {
+            return inline;
+        }
+        if (b64 != null) {
+            return decodeBase64(b64, b64Opt.getLongOpt());
+        }
+        return null;
+    }
+
+    /**
+     * Base64 URL-safe 解码为 UTF-8 文本。
+     *
+     * @throws IllegalArgumentException 内容不是合法 Base64 时抛出，消息指明是哪个选项
+     */
+    private static String decodeBase64(String b64, String optionName) {
+        try {
+            return new String(Base64.getUrlDecoder().decode(b64), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid Base64 (URL-safe) content for --" + optionName, e);
+        }
     }
 
     /**
@@ -336,34 +406,12 @@ public class SqlEntryPoint {
             return ArgsContent.help();
         }
 
-        String script = getContent(line.getOptionValue(OPTION_SQL_FILE.getLongOpt()));
-        if (script == null) {
-            script = Preconditions.checkNotNull(
-                    line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()),
-                    "Please use \"--script\" or \"--script-file\" to specify script either.");
-        } else {
-            Preconditions.checkArgument(
-                    line.getOptionValue(OPTION_SQL_SCRIPT.getLongOpt()) == null,
-                    "Don't set \"--script\" or \"--script-file\" together.");
-        }
+        String script = resolveContent(line, OPTION_SQL_FILE, OPTION_SQL_SCRIPT, OPTION_SQL_SCRIPT_B64);
+        Preconditions.checkNotNull(script,
+                "Please use \"--script\", \"--script-file\" or \"--script-b64\" to specify script either.");
 
-        String catalog = getContent(line.getOptionValue(OPTION_CATALOG_CONF_FILE.getLongOpt()));
-        if (catalog == null) {
-            catalog = line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt());
-        } else {
-            Preconditions.checkArgument(
-                    line.getOptionValue(OPTION_CATALOG_CONF.getLongOpt()) == null,
-                    "Don't set \"--catalog\" or \"--catalog-file\" together.");
-        }
-
-        String resource = getContent(line.getOptionValue(OPTION_RESOURCE_CONF_FILE.getLongOpt()));
-        if (resource == null) {
-            resource = line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt());
-        } else {
-            Preconditions.checkArgument(
-                    line.getOptionValue(OPTION_RESOURCE_CONF.getLongOpt()) == null,
-                    "Don't set \"--resource\" or \"--resource-file\" together.");
-        }
+        String catalog = resolveContent(line, OPTION_CATALOG_CONF_FILE, OPTION_CATALOG_CONF, OPTION_CATALOG_B64);
+        String resource = resolveContent(line, OPTION_RESOURCE_CONF_FILE, OPTION_RESOURCE_CONF, OPTION_RESOURCE_B64);
 
         String[] dependencies = line.getOptionValues(OPTION_DEPENDENCIES.getLongOpt());
 

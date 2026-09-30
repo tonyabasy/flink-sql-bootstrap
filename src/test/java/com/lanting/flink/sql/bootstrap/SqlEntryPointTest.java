@@ -85,4 +85,49 @@ class SqlEntryPointTest {
         assertNotNull(content);
         assertTrue(content.contains("CREATE TEMPORARY TABLE"));
     }
+
+    // ─── --xxx-b64 传输 ─────────────────────────────────────────────
+
+    private static String b64(String text) {
+        return java.util.Base64.getUrlEncoder()
+                .encodeToString(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Test
+    @DisplayName("正向：--script-b64 解码回原始脚本（含换行与单引号）")
+    void scriptB64RoundTrip() throws Exception {
+        String sql = "-- 注释\nCREATE TABLE t (x STRING) WITH ('connector' = 'datagen');\n";
+        SqlEntryPoint.ArgsContent args =
+                SqlEntryPoint.parseOptions(new String[]{"--script-b64", b64(sql)});
+        assertEquals(sql, args.script);
+    }
+
+    @Test
+    @DisplayName("正向：--catalog-b64 / --resource-b64 解码")
+    void catalogAndResourceB64() throws Exception {
+        String catalog = "{\"version\":1,\"tables\":[]}";
+        String resource = "{\"version\":1,\"operators\":[]}";
+        SqlEntryPoint.ArgsContent args = SqlEntryPoint.parseOptions(new String[]{
+                "--script-b64", b64("SELECT 1;"),
+                "--catalog-b64", b64(catalog),
+                "--resource-b64", b64(resource)});
+        assertEquals(catalog, args.catalog);
+        assertEquals(resource, args.resource);
+    }
+
+    @Test
+    @DisplayName("逆向：--script 与 --script-b64 互斥")
+    void scriptAndB64AreMutuallyExclusive() {
+        assertThrows(IllegalArgumentException.class, () ->
+                SqlEntryPoint.parseOptions(new String[]{
+                        "--script", "SELECT 1;", "--script-b64", b64("SELECT 1;")}));
+    }
+
+    @Test
+    @DisplayName("逆向：非法 Base64 报错并指明选项")
+    void invalidBase64Rejected() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () ->
+                SqlEntryPoint.parseOptions(new String[]{"--script-b64", "!!!not-base64!!!"}));
+        assertTrue(e.getMessage().contains("script-b64"));
+    }
 }

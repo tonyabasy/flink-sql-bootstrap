@@ -5,6 +5,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 并且本项目遵循 [语义化版本控制](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
+## [Unreleased]
+
+### Added（新增）
+
+- **Base64 传输选项** —— 新增 `--script-b64` / `--catalog-b64` / `--resource-b64`（URL-safe 编码内联，与 `--xxx`/`--xxx-file` 互斥）。Application Mode 内联多行内容必须走 b64：Flink 将 program args 序列化进 `flink-conf.yaml`，多行值在写出/读回中损坏（1.20.4 实测）
+
 ## [1.0.1] - 2026-06-19
 
 ### Changed（变更）
