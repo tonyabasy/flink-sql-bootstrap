@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-30
+
+### Added
+
+- **Base64 transport options** — new `--script-b64` / `--catalog-b64` / `--resource-b64` (Base64 URL-safe inline, mutually exclusive with `--xxx` / `--xxx-file`). Required for inline multi-line content in Application Mode: Flink serializes program arguments into `flink-conf.yaml` and multi-line values do not survive the round trip (verified on 1.20.4)
+
 ## [1.0.1] - 2026-06-19
 
 ### Changed
