@@ -242,6 +242,16 @@ Job has been submitted with JobID <job_id>
 | **编译** | `--compile` | 解析、校验并编译 SQL 脚本，输出优化后的执行计划 JSON。 |
 | **生成资源模板** | `--init-resource` | 翻译 SQL 计划并输出资源配置模板，供用户调优。 |
 
+## Base64 传输（`--script-b64` / `--catalog-b64` / `--resource-b64`）
+
+三类内容参数各有三种传法：`--xxx-file`（URI 读取）、`--xxx`（内联）、`--xxx-b64`
+（Base64 URL-safe 编码的内联），三路互斥。
+
+**Application Mode 内联多行内容必须走 b64**：Flink 会把 program args 序列化进
+`flink-conf.yaml` 传给 JobManager，多行值在写出/读回中损坏（1.20.4 实测
+`Quoting was not closed properly`）。Base64 URL-safe 编码后单行、无引号、无空白，
+对整条序列化链免疫。Local / Session 模式下三种传法等价，可按方便选择。
+
 ```bash
 # 校验 SQL 语法
 $FLINK_HOME/bin/flink run ... --script-file job.sql --validate

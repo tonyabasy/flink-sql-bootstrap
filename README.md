@@ -244,6 +244,17 @@ Besides full execution, three dry-run modes are provided for CI/CD and developme
 | **Compile** | `--compile` | Parse, validate, and compile the SQL script. Outputs the optimized plan as JSON. |
 | **Init Resource** | `--init-resource` | Translate the SQL plan and output a resource configuration template for tuning. |
 
+## Base64 Transport (`--script-b64` / `--catalog-b64` / `--resource-b64`)
+
+Each content option comes in three mutually exclusive forms: `--xxx-file` (read from URI),
+`--xxx` (inline), and `--xxx-b64` (inline, Base64 URL-safe encoded).
+
+**Inline multi-line content in Application Mode must use the b64 form**: Flink serializes
+program arguments into `flink-conf.yaml` for the JobManager, and multi-line values do not
+survive that round trip (verified on 1.20.4 — `Quoting was not closed properly`).
+Base64 URL-safe encoding produces a single line without quotes or whitespace, immune to the
+entire serialization chain. In Local / Session mode all three forms are equivalent.
+
 ```bash
 # Validate SQL syntax
 $FLINK_HOME/bin/flink run ... --script-file job.sql --validate
